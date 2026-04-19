@@ -27,6 +27,8 @@ export default function OrderConfirmationPage() {
     return () => { alive = false; clearInterval(interval); };
   }, [orderId]);
 
+  // Render skeleton shell so tracker/seat placeholders exist even before fetch resolves
+
   const currentStep = order ? STATUS_FLOW.findIndex((s) => s.key === order.status) : 0;
 
   return (
