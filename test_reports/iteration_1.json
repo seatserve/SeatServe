@@ -1,0 +1,35 @@
+{
+  "summary": "Tested CineBites QR in-seat ordering backend (10/10 pytest PASS) and full frontend E2E flow. Backend is fully functional. Frontend flow (seat landing -> menu -> cart -> payment -> place order -> confirmation -> admin) mostly works, but the Confirmation page is missing required UI (short_id, seat badge, status tracker) — it renders only a generic 'Order Confirmed' message with no order details or Preparing->OFD->Delivered tracker.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "OrderConfirmationPage", "issue": "Page renders only 'Order Confirmed' heading + 'Sit back…' subtitle + 'Order Something Else' button. Missing: order short_id display, seat badge (B12), and the Preparing -> Out for Delivery -> Delivered status tracker. Spec explicitly requires these. Likely data fetch silently failing or component not rendering order data.", "selector": "/confirmation/{id}", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Place Order -> Confirmation", "issue": "Order is created successfully (POST /api/orders returns 200 and redirect to /confirmation/{id} happens), but the confirmation page does not show any fetched order fields — check GET /api/orders/{id} call in OrderConfirmationPage.jsx and render logic for short_id/seat/status tracker.", "affected_selectors": ["/confirmation/:id"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix /app/frontend/src/pages/OrderConfirmationPage.jsx to render order short_id, seat badge, and the 3-step status tracker (Preparing -> Out for Delivery -> Delivered) with the first step highlighted when status='preparing'. Verify GET /api/orders/{id} is invoked and its result rendered.",
+    "Ensure data-testid attributes exist on the confirmation order id element, seat badge, and each status tracker step for testability."
+  ],
+  "critical_code_review_comments": [
+    "server.py uses deprecated FastAPI @app.on_event('startup'/'shutdown') — consider lifespan context manager (non-blocking).",
+    "CORSMiddleware is added AFTER include_router — this still works but convention is to add middleware before including routers.",
+    "Menu seed is not idempotent by content — only checks collection count. Acceptable for MVP.",
+    "No pagination on /api/orders (to_list(500)) — fine for MVP, revisit at scale.",
+    "OrderStatus uses Literal in Pydantic; PATCH payload validation works as expected (tested)."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100%", "frontend": "~85% (confirmation page UI incomplete)"},
+  "seed_data_creation": "Backend startup auto-seeds 12 menu items; E2E test created 1-2 real orders (AMB Cinemas, Screen 2, Seat B12) in MongoDB 'orders' collection. Backend pytest also creates additional orders. No cleanup performed (no TEST_ prefix on orders since schema has no such field).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend all 10 tests pass. The only functional gap found is on /confirmation/{id} — the page does not render the order short_id, seat badge, or status tracker. Rest of flow (landing -> menu with 4 cats + stepper -> sticky cart -> cart with 5% taxes -> payment UPI/Card -> order creation) all verified visually and returns correct redirect. Admin live status update buttons were not exercised end-to-end because test was aborted at confirmation assert; backend PATCH status is fully covered by pytest.",
+  "rca of the issue": "Likely cause: OrderConfirmationPage.jsx either (a) does not fetch order details via GET /api/orders/{id}, or (b) fetches but fails to render short_id/seat/status tracker components. Reproduction: start at /order?screen=2&seat=B12 -> Start Ordering -> add any item -> View Cart -> Proceed to Payment -> select UPI -> Place Order. Observe /confirmation/{id} URL reached but page shows only 'Order Confirmed' heading and an 'Order Something Else' button. Mitigation: inspect OrderConfirmationPage.jsx, ensure useParams id is used, fetch order, and render short_id, seat, and status tracker with data-testids."
+}
