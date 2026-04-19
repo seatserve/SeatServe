@@ -1,0 +1,107 @@
+{
+  "theme": "DARK",
+  "archetype": "5 (Jewel & Luxury)",
+  "typography": {
+    "fonts": {
+      "heading": "Outfit",
+      "body": "Manrope",
+      "mono": "JetBrains Mono"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl tracking-tight leading-none",
+      "h2": "text-2xl sm:text-3xl tracking-tight leading-tight",
+      "h3": "text-xl sm:text-2xl leading-snug",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-muted-foreground",
+      "overline": "text-xs tracking-[0.2em] uppercase font-semibold text-accent/80"
+    }
+  },
+  "color_palette": {
+    "background": {
+      "default": "#0A0A0A",
+      "surface": "#141414",
+      "surface_elevated": "rgba(255,255,255,0.05)"
+    },
+    "brand": {
+      "primary": "#E50914",
+      "primary_hover": "#F0131E",
+      "accent": "#F5C518"
+    },
+    "text": {
+      "primary": "#EDEDED",
+      "secondary": "#A3A3A3",
+      "muted": "#737373"
+    },
+    "border": {
+      "default": "rgba(255,255,255,0.08)",
+      "focus": "#E50914"
+    },
+    "status": {
+      "preparing": "#F5C518",
+      "out_for_delivery": "#3B82F6",
+      "delivered": "#10B981"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Mobile-first, bottom-heavy interaction to suit dark theater environments.",
+    "grids": {
+      "menu_list": "grid-cols-1 gap-6",
+      "admin_dashboard": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
+    },
+    "containers": "max-w-md mx-auto relative min-h-screen pb-24 (mobile app), max-w-7xl w-full mx-auto (admin dashboard)"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#E50914] text-white hover:bg-[#F0131E] rounded-full min-h-[56px] text-lg font-medium tracking-wide shadow-[0_0_20px_rgba(229,9,20,0.3)] transition-all active:scale-95",
+      "secondary": "bg-white/10 text-white hover:bg-white/20 rounded-full min-h-[56px] transition-all",
+      "icon": "rounded-full w-10 h-10 bg-white/10 flex items-center justify-center hover:bg-white/20"
+    },
+    "cards": {
+      "food_item": "bg-[#141414] border border-white/5 rounded-2xl overflow-hidden flex flex-row items-center gap-4 p-4 transition-all hover:bg-white/[0.03]",
+      "admin_widget": "bg-[#141414] border border-white/10 rounded-xl p-6"
+    },
+    "navigation": {
+      "header": "sticky top-0 z-50 bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4 flex justify-between items-center",
+      "bottom_cart": "fixed bottom-0 left-0 right-0 z-50 bg-[#141414]/90 backdrop-blur-xl border-t border-white/5 p-4 md:max-w-md md:mx-auto md:bottom-4 md:rounded-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+    },
+    "inputs": "bg-[#0A0A0A] border border-white/10 rounded-xl min-h-[56px] px-4 text-white placeholder:text-white/30 focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] transition-all"
+  },
+  "motion": {
+    "hover": "transition-all duration-300 ease-out",
+    "click": "active:scale-95 transition-transform",
+    "page_load": "animate-in fade-in slide-in-from-bottom-4 duration-500"
+  },
+  "media": {
+    "image_urls": {
+      "hero_cinema": {
+        "url": "https://images.pexels.com/photos/7991127/pexels-photo-7991127.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Rows of vibrant red seats in a dimly lit movie theater. Use for landing page background with deep dark gradient overlay (bg-black/70)."
+      },
+      "popcorn": {
+        "url": "https://images.pexels.com/photos/7234386/pexels-photo-7234386.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Premium popcorn bucket. Use for menu item."
+      },
+      "nachos": {
+        "url": "https://images.pexels.com/photos/29851128/pexels-photo-29851128.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Gourmet nachos. Use for menu item."
+      },
+      "burger": {
+        "url": "https://images.pexels.com/photos/109400/pexels-photo-109400.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Gourmet burger dark background. Use for menu item."
+      },
+      "beverage": {
+        "url": "https://images.unsplash.com/photo-1768254270166-bee57d6bfce1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwxfHxjb2xhJTIwZHJpbmslMjBkYXJrJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzY1NzM1MTZ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Dark soda. Use for menu item."
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install and use @phosphor-icons/react or lucide-react with bold/duotone weights for a premium cinematic app feel.",
+    "The app UI MUST be absolute dark mode. Do not implement a light mode toggle. The theater environment demands absolute minimal brightness to prevent distracting other moviegoers.",
+    "Ensure the bottom cart is sticky, elevated with glassmorphism, and highly visible without obstructing the last item in the list (use pb-24 on main container).",
+    "Never use full-screen blank white overlays. Any modal, dialog, or bottom sheet must share the base charcoal/obsidian dark palette with a 1px subtle white/10 border.",
+    "All interactive elements (buttons, cart icons, menu items, seat labels) MUST include 'data-testid' for testing purposes.",
+    "Images should have a subtle gradient overlay or border radius to match the sleek UI. No harsh bright image edges.",
+    "Typography: Use Outfit for headings for a premium streaming-service feel, and Manrope for maximum readability in the dark."
+  ]
+}
