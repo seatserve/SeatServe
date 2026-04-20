@@ -11,23 +11,21 @@ const STATUS_FLOW = [
 ];
 
 export default function OrderConfirmationPage() {
-  const { orderId } = useParams();
+  const { slug, orderId } = useParams();
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
     let alive = true;
     const fetchOrder = async () => {
       try {
-        const r = await api.get(`/orders/${orderId}`);
+        const r = await api.get(`/m/${slug}/orders/${orderId}`);
         if (alive) setOrder(r.data);
       } catch { /* noop */ }
     };
     fetchOrder();
     const interval = setInterval(fetchOrder, 4000);
     return () => { alive = false; clearInterval(interval); };
-  }, [orderId]);
-
-  // Render skeleton shell so tracker/seat placeholders exist even before fetch resolves
+  }, [slug, orderId]);
 
   const currentStep = order ? STATUS_FLOW.findIndex((s) => s.key === order.status) : 0;
 
@@ -55,7 +53,6 @@ export default function OrderConfirmationPage() {
           </div>
         )}
 
-        {/* Status tracker */}
         <section className="mt-6 rounded-2xl bg-[#141414] border border-white/10 p-5 cb-enter-delay-2" data-testid="status-tracker">
           <div className="flex items-center justify-between">
             <p className="text-[10px] tracking-[0.25em] uppercase text-white/50 font-semibold">Live status</p>
@@ -63,10 +60,8 @@ export default function OrderConfirmationPage() {
           </div>
           <div className="mt-5 relative">
             <div className="absolute left-5 top-5 bottom-5 w-0.5 bg-white/10" />
-            <div
-              className="absolute left-5 top-5 w-0.5 bg-[#E50914] transition-all duration-700"
-              style={{ height: `${Math.max(0, currentStep) * 50}%` }}
-            />
+            <div className="absolute left-5 top-5 w-0.5 bg-[#E50914] transition-all duration-700"
+              style={{ height: `${Math.max(0, currentStep) * 50}%` }} />
             <ul className="space-y-6">
               {STATUS_FLOW.map((s, idx) => {
                 const Icon = s.icon;
@@ -74,20 +69,14 @@ export default function OrderConfirmationPage() {
                 const current = idx === currentStep;
                 return (
                   <li key={s.key} className="flex items-center gap-4" data-testid={`status-step-${s.key}`}>
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
-                        reached
-                          ? "bg-[#E50914] border-[#E50914] text-white"
-                          : "bg-[#0A0A0A] border-white/15 text-white/40"
-                      } ${current ? "cb-pulse" : ""}`}
-                    >
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
+                      reached ? "bg-[#E50914] border-[#E50914] text-white" : "bg-[#0A0A0A] border-white/15 text-white/40"
+                    } ${current ? "cb-pulse" : ""}`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
                       <p className={`font-display text-base ${reached ? "text-white" : "text-white/50"}`}>{s.label}</p>
-                      {current && order && (
-                        <p className="text-xs text-[#F5C518] mt-0.5">In progress…</p>
-                      )}
+                      {current && order && <p className="text-xs text-[#F5C518] mt-0.5">In progress…</p>}
                     </div>
                   </li>
                 );
@@ -96,7 +85,13 @@ export default function OrderConfirmationPage() {
           </div>
         </section>
 
-        {/* Items summary */}
+        {order && order.notes && (
+          <section className="mt-5 rounded-2xl bg-[#F5C518]/5 border border-[#F5C518]/20 p-4 cb-enter-delay-3">
+            <p className="text-[10px] tracking-[0.25em] uppercase text-[#F5C518] font-semibold mb-1">Your note to the kitchen</p>
+            <p className="text-sm text-white/80 italic" data-testid="confirmation-notes">"{order.notes}"</p>
+          </section>
+        )}
+
         {order && (
           <section className="mt-5 rounded-2xl bg-[#141414] border border-white/10 p-5 cb-enter-delay-3" data-testid="order-items-summary">
             <p className="text-[10px] tracking-[0.25em] uppercase text-white/50 font-semibold">Your order</p>
@@ -117,11 +112,8 @@ export default function OrderConfirmationPage() {
         )}
 
         <div className="mt-7">
-          <Link
-            to="/menu"
-            data-testid="order-more-link"
-            className="block w-full min-h-[56px] rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-white font-medium tracking-wide transition-all active:scale-[0.98] flex items-center justify-center"
-          >
+          <Link to={`/m/${slug}/menu`} data-testid="order-more-link"
+            className="block w-full min-h-[56px] rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-white font-medium tracking-wide transition-all active:scale-[0.98] flex items-center justify-center">
             Order Something Else
           </Link>
         </div>

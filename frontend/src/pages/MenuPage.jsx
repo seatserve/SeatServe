@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Minus, Plus } from "lucide-react";
 import { api } from "../lib/api";
 import { useCart } from "../context/CartContext";
@@ -9,6 +9,7 @@ import { StickyCartBar } from "../components/StickyCartBar";
 const DEFAULT_CATEGORIES = ["Popcorn", "Beverages", "Snacks", "Combos"];
 
 export default function MenuPage() {
+  const { slug } = useParams();
   const [menu, setMenu] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
@@ -17,8 +18,8 @@ export default function MenuPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!seat) { navigate("/"); return; }
-    Promise.all([api.get("/menu"), api.get("/categories")]).then(([m, c]) => {
+    if (!seat || seat.slug !== slug) { navigate("/"); return; }
+    Promise.all([api.get(`/m/${slug}/menu`), api.get(`/m/${slug}/categories`)]).then(([m, c]) => {
       setMenu(m.data);
       const cats = c.data && c.data.length ? c.data : DEFAULT_CATEGORIES;
       setCategories(cats);
@@ -26,16 +27,15 @@ export default function MenuPage() {
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seat, navigate]);
+  }, [seat, slug, navigate]);
 
   const byCategory = useMemo(() => menu.filter((m) => m.category === category), [menu, category]);
   const qtyOf = (id) => items.find((i) => i.item_id === id)?.quantity || 0;
-
   if (!seat) return null;
 
   return (
     <div className="min-h-screen cb-grain pb-28 relative">
-      <AppHeader title="Menu" backTo="/" testId="menu-header" />
+      <AppHeader title="Menu" backTo={`/m/${slug}/order?screen=${seat.screen}&seat=${seat.seat}`} testId="menu-header" />
 
       <main className="max-w-md mx-auto px-5 pt-5">
         <div className="flex justify-between items-center cb-enter">
@@ -48,46 +48,31 @@ export default function MenuPage() {
           <SeatBadge compact screen={seat.screen} seat={seat.seat} testId="menu-seat-compact" />
         </div>
 
-        {/* Categories */}
         <div className="mt-6 -mx-5 px-5 overflow-x-auto scrollbar-none" data-testid="category-tabs">
           <div className="flex gap-2 w-max">
             {categories.map((c) => (
-              <button
-                key={c}
-                data-testid={`category-${c.toLowerCase().replace(/\s+/g, "-")}-btn`}
-                onClick={() => setCategory(c)}
+              <button key={c} data-testid={`category-${c.toLowerCase().replace(/\s+/g, "-")}-btn`} onClick={() => setCategory(c)}
                 className={`rounded-full px-5 py-2.5 text-sm font-medium tracking-wide transition-all active:scale-95 border whitespace-nowrap ${
-                  category === c
-                    ? "bg-[#E50914] text-white border-[#E50914] cb-glow"
-                    : "bg-white/5 text-white/70 hover:bg-white/10 border-white/10"
-                }`}
-              >
-                {c}
-              </button>
+                  category === c ? "bg-[#E50914] text-white border-[#E50914] cb-glow" : "bg-white/5 text-white/70 hover:bg-white/10 border-white/10"
+                }`}>{c}</button>
             ))}
           </div>
         </div>
 
-        {/* Items */}
         <section className="mt-6 space-y-3" data-testid="menu-list">
           {loading && <div className="text-white/50 text-sm">Loading menu…</div>}
           {!loading && byCategory.map((item, idx) => {
             const qty = qtyOf(item.id);
             const soldOut = item.is_available === false || item.stock_count === 0;
             return (
-              <article
-                key={item.id}
-                data-testid={`menu-item-${item.id}`}
+              <article key={item.id} data-testid={`menu-item-${item.id}`}
                 className={`rounded-2xl bg-[#141414] border border-white/5 overflow-hidden flex gap-4 p-3 transition-all hover:bg-white/[0.03] cb-enter ${soldOut ? "opacity-50" : ""}`}
-                style={{ animationDelay: `${idx * 40}ms` }}
-              >
+                style={{ animationDelay: `${idx * 40}ms` }}>
                 <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[#0A0A0A] relative">
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                  {soldOut && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <span className="text-[9px] tracking-[0.2em] uppercase font-bold text-[#E50914]">Sold Out</span>
-                    </div>
-                  )}
+                  {soldOut && <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-[9px] tracking-[0.2em] uppercase font-bold text-[#E50914]">Sold Out</span>
+                  </div>}
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                   <div>
@@ -100,32 +85,21 @@ export default function MenuPage() {
                   <div className="flex items-center justify-between mt-2">
                     <span className="font-mono text-sm" data-testid={`price-${item.id}`}>₹{item.price.toFixed(0)}</span>
                     {soldOut ? (
-                      <span className="text-xs text-white/40 font-semibold tracking-[0.15em] uppercase" data-testid={`soldout-${item.id}`}>Unavailable</span>
+                      <span className="text-xs text-white/40 font-semibold tracking-[0.15em] uppercase">Unavailable</span>
                     ) : qty === 0 ? (
-                      <button
-                        onClick={() => addItem(item)}
-                        data-testid={`add-btn-${item.id}`}
-                        className="rounded-full bg-[#E50914]/10 hover:bg-[#E50914]/20 border border-[#E50914]/40 text-[#E50914] px-4 py-2 text-sm font-medium tracking-wide transition-all active:scale-95"
-                      >
+                      <button onClick={() => addItem(item)} data-testid={`add-btn-${item.id}`}
+                        className="rounded-full bg-[#E50914]/10 hover:bg-[#E50914]/20 border border-[#E50914]/40 text-[#E50914] px-4 py-2 text-sm font-medium tracking-wide transition-all active:scale-95">
                         + Add
                       </button>
                     ) : (
-                      <div className="flex items-center gap-1 rounded-full bg-[#E50914] text-white" data-testid={`qty-stepper-${item.id}`}>
-                        <button
-                          onClick={() => decrementItem(item.id)}
-                          data-testid={`dec-btn-${item.id}`}
-                          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/15 active:scale-90 transition-all"
-                          aria-label="Decrease"
-                        >
+                      <div className="flex items-center gap-1 rounded-full bg-[#E50914] text-white">
+                        <button onClick={() => decrementItem(item.id)} data-testid={`dec-btn-${item.id}`}
+                          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/15 active:scale-90 transition-all" aria-label="Decrease">
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="font-mono text-sm w-5 text-center" data-testid={`qty-${item.id}`}>{qty}</span>
-                        <button
-                          onClick={() => addItem(item)}
-                          data-testid={`inc-btn-${item.id}`}
-                          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/15 active:scale-90 transition-all"
-                          aria-label="Increase"
-                        >
+                        <button onClick={() => addItem(item)} data-testid={`inc-btn-${item.id}`}
+                          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/15 active:scale-90 transition-all" aria-label="Increase">
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
@@ -138,7 +112,7 @@ export default function MenuPage() {
         </section>
       </main>
 
-      <StickyCartBar />
+      <StickyCartBar slug={slug} />
     </div>
   );
 }

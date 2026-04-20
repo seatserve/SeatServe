@@ -4,6 +4,7 @@ const CartContext = createContext(null);
 
 const LS_CART = "cinebites_cart_v1";
 const LS_SEAT = "cinebites_seat_v1";
+const LS_NOTES = "cinebites_notes_v1";
 
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState(() => {
@@ -12,20 +13,21 @@ export const CartProvider = ({ children }) => {
   const [seat, setSeatState] = useState(() => {
     try { return JSON.parse(localStorage.getItem(LS_SEAT)) || null; } catch { return null; }
   });
+  const [notes, setNotesState] = useState(() => {
+    try { return localStorage.getItem(LS_NOTES) || ""; } catch { return ""; }
+  });
 
   useEffect(() => { localStorage.setItem(LS_CART, JSON.stringify(items)); }, [items]);
-  useEffect(() => {
-    if (seat) localStorage.setItem(LS_SEAT, JSON.stringify(seat));
-  }, [seat]);
+  useEffect(() => { if (seat) localStorage.setItem(LS_SEAT, JSON.stringify(seat)); }, [seat]);
+  useEffect(() => { localStorage.setItem(LS_NOTES, notes || ""); }, [notes]);
 
   const setSeat = useCallback((s) => setSeatState(s), []);
+  const setNotes = useCallback((n) => setNotesState(n), []);
 
   const addItem = useCallback((item) => {
     setItems((prev) => {
       const existing = prev.find((p) => p.item_id === item.id);
-      if (existing) {
-        return prev.map((p) => p.item_id === item.id ? { ...p, quantity: p.quantity + 1 } : p);
-      }
+      if (existing) return prev.map((p) => p.item_id === item.id ? { ...p, quantity: p.quantity + 1 } : p);
       return [...prev, { item_id: item.id, name: item.name, price: item.price, quantity: 1, image: item.image }];
     });
   }, []);
@@ -41,7 +43,7 @@ export const CartProvider = ({ children }) => {
     setItems((prev) => prev.filter((p) => p.item_id !== itemId));
   }, []);
 
-  const clearCart = useCallback(() => setItems([]), []);
+  const clearCart = useCallback(() => { setItems([]); setNotesState(""); }, []);
 
   const { totalCount, totalPrice } = useMemo(() => {
     const totalCount = items.reduce((s, i) => s + i.quantity, 0);
@@ -49,7 +51,7 @@ export const CartProvider = ({ children }) => {
     return { totalCount, totalPrice };
   }, [items]);
 
-  const value = { items, seat, setSeat, addItem, decrementItem, removeItem, clearCart, totalCount, totalPrice };
+  const value = { items, seat, setSeat, notes, setNotes, addItem, decrementItem, removeItem, clearCart, totalCount, totalPrice };
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 

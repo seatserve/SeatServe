@@ -1,45 +1,43 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useCart } from "../context/CartContext";
 import { PrimaryButton } from "../components/Shared";
 import { Armchair, Ticket } from "lucide-react";
 
 export default function SeatLandingPage() {
+  const { slug } = useParams();
   const [params] = useSearchParams();
-  const screen = params.get("screen") || "2";
-  const seat = params.get("seat") || "B12";
+  const screen = params.get("screen") || "1";
+  const seat = params.get("seat") || "A1";
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
   const { setSeat, clearCart, seat: storedSeat } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
-    api.get("/theater-info", { params: { screen, seat } }).then((r) => {
-      if (!cancelled) {
-        setInfo(r.data);
-        // If seat changed (different scan), reset cart
-        if (storedSeat && (storedSeat.screen !== screen || storedSeat.seat !== seat)) {
-          clearCart();
-        }
-        setSeat(r.data);
-        setLoading(false);
+    api.get(`/m/${slug}/theater-info`, { params: { screen, seat } }).then((r) => {
+      if (cancelled) return;
+      setInfo(r.data);
+      if (storedSeat && (storedSeat.slug !== slug || storedSeat.screen !== screen || storedSeat.seat !== seat)) {
+        clearCart();
       }
-    }).catch(() => { if (!cancelled) setLoading(false); });
+      setSeat({ ...r.data, slug });
+      setLoading(false);
+    }).catch((e) => {
+      if (!cancelled) { setErr("Multiplex not found or QR invalid."); setLoading(false); }
+    });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, seat]);
+  }, [screen, seat, slug]);
 
   return (
     <div className="min-h-screen relative cb-grain">
-      {/* Hero backdrop */}
       <div className="absolute inset-0 pointer-events-none">
-        <img
-          src="https://images.pexels.com/photos/7991127/pexels-photo-7991127.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
-          alt=""
-          className="w-full h-[55vh] object-cover opacity-30"
-        />
+        <img src="https://images.pexels.com/photos/7991127/pexels-photo-7991127.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+          alt="" className="w-full h-[55vh] object-cover opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A]/50 via-[#0A0A0A]/85 to-[#0A0A0A]" />
       </div>
 
@@ -67,7 +65,7 @@ export default function SeatLandingPage() {
             <div>
               <p className="text-[10px] tracking-[0.25em] uppercase text-white/50 font-semibold">Delivering to</p>
               <p className="font-display text-xl leading-tight" data-testid="landing-theater-name">
-                {loading ? "Loading..." : info?.theater}
+                {loading ? "Loading..." : err ? "—" : info?.theater}
               </p>
             </div>
           </div>
@@ -84,21 +82,15 @@ export default function SeatLandingPage() {
           <p className="mt-5 text-center text-sm text-white/60" data-testid="landing-delivery-msg">
             You are ordering to <span className="text-white font-semibold">Seat {seat}</span>
           </p>
+          {err && <p className="mt-3 text-center text-sm text-[#E50914]" data-testid="landing-error">{err}</p>}
         </div>
 
         <div className="mt-auto pt-10 cb-enter-delay-2">
-          <PrimaryButton
-            testId="start-ordering-btn"
-            onClick={() => navigate("/menu")}
-            disabled={loading}
-          >
+          <PrimaryButton testId="start-ordering-btn" onClick={() => navigate(`/m/${slug}/menu`)} disabled={loading || !!err}>
             Start Ordering
           </PrimaryButton>
-          <Link
-            to="/"
-            data-testid="wrong-seat-link"
-            className="mt-4 block text-center text-xs tracking-[0.15em] uppercase text-white/40 hover:text-white/70 transition-colors"
-          >
+          <Link to="/" data-testid="wrong-seat-link"
+            className="mt-4 block text-center text-xs tracking-[0.15em] uppercase text-white/40 hover:text-white/70 transition-colors">
             Wrong seat? Rescan
           </Link>
         </div>
