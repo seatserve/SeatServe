@@ -6,7 +6,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Literal
+from typing import List, Literal, Optional
 import uuid
 from datetime import datetime, timezone
 
@@ -33,6 +33,28 @@ class MenuItem(BaseModel):
     price: float
     category: str  # Popcorn | Beverages | Snacks | Combos
     image: str
+    is_available: bool = True
+    stock_count: Optional[int] = None  # None = unlimited
+
+
+class MenuItemCreate(BaseModel):
+    name: str
+    description: str = ""
+    price: float
+    category: Literal["Popcorn", "Beverages", "Snacks", "Combos"]
+    image: str
+    is_available: bool = True
+    stock_count: Optional[int] = None
+
+
+class MenuItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    category: Optional[Literal["Popcorn", "Beverages", "Snacks", "Combos"]] = None
+    image: Optional[str] = None
+    is_available: Optional[bool] = None
+    stock_count: Optional[int] = None
 
 
 class CartItem(BaseModel):
@@ -134,10 +156,53 @@ async def get_menu():
     return items
 
 
+@api_router.post("/menu", response_model=MenuItem, status_code=201)
+async def create_menu_item(payload: MenuItemCreate):
+    item = MenuItem(id=uuid.uuid4().hex[:10], **payload.model_dump())
+    await db.menu.insert_one(item.model_dump())
+    return item
+
+
+@api_router.patch("/menu/{item_id}", response_model=MenuItem)
+async def update_menu_item(item_id: str, payload: MenuItemUpdate):
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    result = await db.menu.find_one_and_update(
+        {"id": item_id},
+        {"$set": updates},
+        return_document=True,
+        projection={"_id": 0},
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    return result
+
+
+@api_router.delete("/menu/{item_id}")
+async def delete_menu_item(item_id: str):
+    result = await db.menu.delete_one({"id": item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    return {"deleted": item_id}
+
+
 @api_router.post("/orders", response_model=Order)
 async def create_order(payload: OrderCreate):
     if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
+
+    # Validate availability & stock before creating order
+    for ci in payload.items:
+        menu_item = await db.menu.find_one({"id": ci.item_id}, {"_id": 0})
+        if not menu_item:
+            raise HTTPException(status_code=400, detail=f"Item {ci.item_id} no longer on menu")
+        if not menu_item.get("is_available", True):
+            raise HTTPException(status_code=400, detail=f"{menu_item['name']} is sold out")
+        stock = menu_item.get("stock_count")
+        if stock is not None and stock < ci.quantity:
+            raise HTTPException(status_code=400, detail=f"Only {stock} × {menu_item['name']} left")
+
     order = Order(
         short_id=uuid.uuid4().hex[:6].upper(),
         theater=payload.theater,
@@ -150,6 +215,17 @@ async def create_order(payload: OrderCreate):
     doc = order.model_dump()
     doc["items"] = [i.model_dump() if hasattr(i, "model_dump") else i for i in doc["items"]]
     await db.orders.insert_one(doc)
+
+    # Decrement stock (if tracked); auto-flip is_available=False when depleted
+    for ci in payload.items:
+        menu_item = await db.menu.find_one({"id": ci.item_id}, {"_id": 0})
+        if menu_item and menu_item.get("stock_count") is not None:
+            new_stock = max(0, menu_item["stock_count"] - ci.quantity)
+            update = {"stock_count": new_stock}
+            if new_stock == 0:
+                update["is_available"] = False
+            await db.menu.update_one({"id": ci.item_id}, {"$set": update})
+
     return order
 
 

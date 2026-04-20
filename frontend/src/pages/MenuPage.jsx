@@ -65,24 +65,35 @@ export default function MenuPage() {
           {loading && <div className="text-white/50 text-sm">Loading menu…</div>}
           {!loading && byCategory.map((item, idx) => {
             const qty = qtyOf(item.id);
+            const soldOut = item.is_available === false || item.stock_count === 0;
             return (
               <article
                 key={item.id}
                 data-testid={`menu-item-${item.id}`}
-                className={`rounded-2xl bg-[#141414] border border-white/5 overflow-hidden flex gap-4 p-3 transition-all hover:bg-white/[0.03] cb-enter`}
+                className={`rounded-2xl bg-[#141414] border border-white/5 overflow-hidden flex gap-4 p-3 transition-all hover:bg-white/[0.03] cb-enter ${soldOut ? "opacity-50" : ""}`}
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
-                <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[#0A0A0A]">
+                <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[#0A0A0A] relative">
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                  {soldOut && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="text-[9px] tracking-[0.2em] uppercase font-bold text-[#E50914]">Sold Out</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                   <div>
                     <h3 className="font-display text-base leading-tight">{item.name}</h3>
                     <p className="text-xs text-white/50 mt-1 line-clamp-2">{item.description}</p>
+                    {item.stock_count !== null && item.stock_count !== undefined && item.stock_count > 0 && item.stock_count <= 5 && (
+                      <p className="text-[10px] text-[#F5C518] mt-1 font-semibold">Only {item.stock_count} left</p>
+                    )}
                   </div>
                   <div className="flex items-center justify-between mt-2">
                     <span className="font-mono text-sm" data-testid={`price-${item.id}`}>₹{item.price.toFixed(0)}</span>
-                    {qty === 0 ? (
+                    {soldOut ? (
+                      <span className="text-xs text-white/40 font-semibold tracking-[0.15em] uppercase" data-testid={`soldout-${item.id}`}>Unavailable</span>
+                    ) : qty === 0 ? (
                       <button
                         onClick={() => addItem(item)}
                         data-testid={`add-btn-${item.id}`}

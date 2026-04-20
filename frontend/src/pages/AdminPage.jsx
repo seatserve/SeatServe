@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Film, ChefHat, Bike, Check, RefreshCw, ListOrdered } from "lucide-react";
+import { Film, ChefHat, Bike, Check, RefreshCw, ListOrdered, Package } from "lucide-react";
 import { api } from "../lib/api";
 
 const STATUS_META = {
@@ -58,6 +58,14 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            to="/admin/menu"
+            data-testid="nav-inventory-link"
+            className="inline-flex items-center gap-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 text-sm transition-all"
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>Inventory</span>
+          </Link>
           <button
             onClick={fetchOrders}
             data-testid="refresh-orders-btn"

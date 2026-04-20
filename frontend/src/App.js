@@ -9,6 +9,7 @@ import CartPage from "./pages/CartPage";
 import PaymentPage from "./pages/PaymentPage";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import AdminPage from "./pages/AdminPage";
+import InventoryPage from "./pages/InventoryPage";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
             <Route path="/payment" element={<PaymentPage />} />
             <Route path="/confirmation/:orderId" element={<OrderConfirmationPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/menu" element={<InventoryPage />} />
           </Routes>
         </CartProvider>
       </BrowserRouter>
