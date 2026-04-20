@@ -6,18 +6,26 @@ import { useCart } from "../context/CartContext";
 import { AppHeader, SeatBadge } from "../components/Shared";
 import { StickyCartBar } from "../components/StickyCartBar";
 
-const CATEGORIES = ["Popcorn", "Beverages", "Snacks", "Combos"];
+const DEFAULT_CATEGORIES = ["Popcorn", "Beverages", "Snacks", "Combos"];
 
 export default function MenuPage() {
   const [menu, setMenu] = useState([]);
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
   const [loading, setLoading] = useState(true);
   const { items, addItem, decrementItem, seat } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!seat) { navigate("/"); return; }
-    api.get("/menu").then((r) => { setMenu(r.data); setLoading(false); });
+    Promise.all([api.get("/menu"), api.get("/categories")]).then(([m, c]) => {
+      setMenu(m.data);
+      const cats = c.data && c.data.length ? c.data : DEFAULT_CATEGORIES;
+      setCategories(cats);
+      if (!cats.includes(category)) setCategory(cats[0]);
+      setLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seat, navigate]);
 
   const byCategory = useMemo(() => menu.filter((m) => m.category === category), [menu, category]);
@@ -43,10 +51,10 @@ export default function MenuPage() {
         {/* Categories */}
         <div className="mt-6 -mx-5 px-5 overflow-x-auto scrollbar-none" data-testid="category-tabs">
           <div className="flex gap-2 w-max">
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <button
                 key={c}
-                data-testid={`category-${c.toLowerCase()}-btn`}
+                data-testid={`category-${c.toLowerCase().replace(/\s+/g, "-")}-btn`}
                 onClick={() => setCategory(c)}
                 className={`rounded-full px-5 py-2.5 text-sm font-medium tracking-wide transition-all active:scale-95 border whitespace-nowrap ${
                   category === c

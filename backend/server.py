@@ -41,7 +41,7 @@ class MenuItemCreate(BaseModel):
     name: str
     description: str = ""
     price: float
-    category: Literal["Popcorn", "Beverages", "Snacks", "Combos"]
+    category: str
     image: str
     is_available: bool = True
     stock_count: Optional[int] = None
@@ -51,7 +51,7 @@ class MenuItemUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     price: Optional[float] = None
-    category: Optional[Literal["Popcorn", "Beverages", "Snacks", "Combos"]] = None
+    category: Optional[str] = None
     image: Optional[str] = None
     is_available: Optional[bool] = None
     stock_count: Optional[int] = None
@@ -154,6 +154,16 @@ async def list_seats():
 async def get_menu():
     items = await db.menu.find({}, {"_id": 0}).to_list(500)
     return items
+
+
+@api_router.get("/categories", response_model=List[str])
+async def list_categories():
+    cats = await db.menu.distinct("category")
+    # Keep seeded categories always first, then any new ones alphabetically
+    default = ["Popcorn", "Beverages", "Snacks", "Combos"]
+    extras = sorted([c for c in cats if c and c not in default])
+    ordered = [c for c in default if c in cats] + extras
+    return ordered or default
 
 
 @api_router.post("/menu", response_model=MenuItem, status_code=201)

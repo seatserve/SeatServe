@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Film, Plus, Pencil, Trash2, Check, X, Package, AlertTriangle, ListOrdered } from "lucide-react";
 import { api } from "../lib/api";
 
-const CATEGORIES = ["Popcorn", "Beverages", "Snacks", "Combos"];
+const DEFAULT_CATEGORIES = ["Popcorn", "Beverages", "Snacks", "Combos"];
 
 const emptyForm = {
   name: "",
@@ -17,6 +17,7 @@ const emptyForm = {
 
 export default function InventoryPage() {
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [editingId, setEditingId] = useState(null);
@@ -25,8 +26,9 @@ export default function InventoryPage() {
   const [error, setError] = useState("");
 
   const fetchItems = useCallback(async () => {
-    const r = await api.get("/menu");
-    setItems(r.data);
+    const [m, c] = await Promise.all([api.get("/menu"), api.get("/categories")]);
+    setItems(m.data);
+    setCategories(c.data && c.data.length ? c.data : DEFAULT_CATEGORIES);
     setLoading(false);
   }, []);
 
@@ -54,6 +56,7 @@ export default function InventoryPage() {
   const validate = () => {
     if (!form.name.trim()) return "Name required";
     if (!form.image.trim()) return "Image URL required";
+    if (!form.category.trim()) return "Category required";
     const price = parseFloat(form.price);
     if (!price || price <= 0) return "Price must be positive";
     if (form.stock_count !== "" && (isNaN(parseInt(form.stock_count)) || parseInt(form.stock_count) < 0)) return "Stock must be 0 or more";
@@ -67,7 +70,7 @@ export default function InventoryPage() {
       name: form.name.trim(),
       description: form.description.trim(),
       price: parseFloat(form.price),
-      category: form.category,
+      category: form.category.trim(),
       image: form.image.trim(),
       is_available: form.is_available,
       stock_count: form.stock_count === "" ? null : parseInt(form.stock_count),
@@ -136,11 +139,11 @@ export default function InventoryPage() {
         {/* Add button + Filters */}
         <div className="mt-8 flex items-center justify-between gap-3 flex-wrap cb-enter-delay-1">
           <div className="flex gap-2 overflow-x-auto">
-            {["all", ...CATEGORIES].map((c) => (
+            {["all", ...categories].map((c) => (
               <button
                 key={c}
                 onClick={() => setFilter(c)}
-                data-testid={`inv-filter-${c.toLowerCase()}-btn`}
+                data-testid={`inv-filter-${c.toLowerCase().replace(/\s+/g, "-")}-btn`}
                 className={`rounded-full px-5 py-2 text-sm font-medium tracking-wide border transition-all active:scale-95 whitespace-nowrap ${
                   filter === c
                     ? "bg-[#E50914] text-white border-[#E50914]"
@@ -172,6 +175,7 @@ export default function InventoryPage() {
             error={error}
             submitLabel="Create Item"
             testIdPrefix="add"
+            categories={categories}
           />
         )}
 
@@ -193,6 +197,7 @@ export default function InventoryPage() {
                     error={error}
                     submitLabel="Save Changes"
                     testIdPrefix="edit"
+                    categories={categories}
                   />
                 </div>
               );
@@ -275,8 +280,9 @@ const Stat = ({ label, value, color, Icon }) => (
   </div>
 );
 
-const ItemForm = ({ form, setForm, onSubmit, onCancel, title, error, submitLabel, testIdPrefix }) => {
+const ItemForm = ({ form, setForm, onSubmit, onCancel, title, error, submitLabel, testIdPrefix, categories = [] }) => {
   const on = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const listId = `${testIdPrefix}-cat-list`;
   return (
     <section
       className="mt-6 rounded-2xl bg-[#141414] border border-[#E50914]/30 p-6 cb-enter"
@@ -299,15 +305,21 @@ const ItemForm = ({ form, setForm, onSubmit, onCancel, title, error, submitLabel
             placeholder="e.g. Chicken Popcorn"
           />
         </Field>
-        <Field label="Category *">
-          <select
-            data-testid={`${testIdPrefix}-category-select`}
+        <Field label="Category * (pick existing or type new)">
+          <input
+            data-testid={`${testIdPrefix}-category-input`}
+            list={listId}
             value={form.category}
             onChange={on("category")}
             className="inv-input"
-          >
-            {CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#141414]">{c}</option>)}
-          </select>
+            placeholder="e.g. Fries, Ice Creams, Desserts…"
+          />
+          <datalist id={listId}>
+            {categories.map((c) => <option key={c} value={c} />)}
+          </datalist>
+          <span className="text-[10px] text-white/40 mt-1">
+            Existing: {categories.join(" · ") || "none yet"}
+          </span>
         </Field>
         <Field label="Price (₹) *">
           <input
