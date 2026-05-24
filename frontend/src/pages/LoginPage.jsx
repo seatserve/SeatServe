@@ -7,12 +7,12 @@ import { formatApiError } from "../lib/api";
 export default function LoginPage() {
   const { login } = useAuth();
   const nav = useNavigate();
-  
+
   const [loginStr, setLoginStr] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -28,19 +28,19 @@ export default function LoginPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    setErr(""); 
+    setErr("");
     setLoading(true);
-    
+
     try {
       const u = await login(loginStr, password);
-      
+
       // Save or remove login string from remember me
       if (rememberMe) {
         localStorage.setItem("seatserve_remember_me", loginStr);
       } else {
         localStorage.removeItem("seatserve_remember_me");
       }
-      
+
       // Route based on role
       if (u.role === "super_admin") {
         nav("/super-admin");
@@ -64,7 +64,7 @@ export default function LoginPage() {
 
       {/* Main Login Card */}
       <div className="relative w-full max-w-md rounded-3xl bg-[#141414]/90 border border-white/10 p-8 md:p-10 shadow-2xl backdrop-blur-xl cb-enter z-10">
-        
+
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-[#E50914] flex items-center justify-center shadow-lg shadow-[#E50914]/25 mb-4 transform hover:scale-105 transition-transform duration-300">
@@ -80,20 +80,20 @@ export default function LoginPage() {
 
         {/* Form */}
         <form onSubmit={submit} className="space-y-5" data-testid="login-form">
-          
+
           {/* Username/Email Input */}
           <div>
             <label className="block text-[10px] tracking-[0.2em] uppercase text-white/50 font-semibold mb-2 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5" /> Username or Email
             </label>
-            <input 
-              data-testid="login-username-input" 
-              type="text" 
-              value={loginStr} 
+            <input
+              data-testid="login-username-input"
+              type="text"
+              value={loginStr}
               onChange={(e) => setLoginStr(e.target.value)}
               className="w-full bg-[#070707] border border-white/10 rounded-xl h-12 px-4 text-white focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] outline-none transition-all placeholder:text-white/20"
-              placeholder="e.g. Apsara or owner@cinebites.in" 
-              required 
+              placeholder="e.g. Apsara or owner@cinebites.in"
+              required
             />
           </div>
 
@@ -103,7 +103,7 @@ export default function LoginPage() {
               <label className="block text-[10px] tracking-[0.2em] uppercase text-white/50 font-semibold flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5" /> Password
               </label>
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowForgotModal(true)}
                 className="text-[11px] text-white/40 hover:text-[#E50914] transition-colors focus:outline-none flex items-center gap-1"
@@ -112,17 +112,17 @@ export default function LoginPage() {
               </button>
             </div>
             <div className="relative">
-              <input 
-                data-testid="login-password-input" 
-                type={showPassword ? "text" : "password"} 
-                value={password} 
+              <input
+                data-testid="login-password-input"
+                type={showPassword ? "text" : "password"}
+                value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-[#070707] border border-white/10 rounded-xl h-12 pl-4 pr-12 text-white focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] outline-none transition-all placeholder:text-white/20"
-                placeholder="••••••••" 
-                required 
+                placeholder="••••••••"
+                required
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors focus:outline-none"
               >
@@ -134,9 +134,9 @@ export default function LoginPage() {
           {/* Remember Me checkbox */}
           <div className="flex items-center">
             <label className="relative flex items-center cursor-pointer select-none text-xs text-white/60 hover:text-white/90 transition-colors">
-              <input 
-                type="checkbox" 
-                checked={rememberMe} 
+              <input
+                type="checkbox"
+                checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="sr-only peer"
               />
@@ -155,9 +155,9 @@ export default function LoginPage() {
           )}
 
           {/* Submit Button */}
-          <button 
-            type="submit" 
-            disabled={loading} 
+          <button
+            type="submit"
+            disabled={loading}
             data-testid="login-submit"
             className="w-full h-[54px] rounded-full bg-[#E50914] hover:bg-[#F0131E] text-white font-medium tracking-wide flex items-center justify-center gap-2 cb-glow transition-all active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none mt-2"
           >
@@ -182,7 +182,7 @@ export default function LoginPage() {
       {showForgotModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-5 z-50 cb-enter">
           <div className="w-full max-w-sm rounded-3xl bg-[#141414] border border-white/10 p-6 relative">
-            <button 
+            <button
               onClick={() => setShowForgotModal(false)}
               className="absolute right-4 top-4 w-8 h-8 rounded-full bg-[#0A0A0A] border border-white/5 flex items-center justify-center text-white/60 hover:text-white transition-colors"
             >
@@ -205,7 +205,7 @@ export default function LoginPage() {
                 <span className="text-white/80">Typically &lt; 2 hours</span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setShowForgotModal(false)}
               className="w-full h-11 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-full mt-5 transition-colors"
             >
