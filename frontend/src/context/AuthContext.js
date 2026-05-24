@@ -11,8 +11,8 @@ export const AuthProvider = ({ children }) => {
   const [activeRole, setActiveRole] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const login = useCallback(async (email, password) => {
-    const r = await api.post("/auth/login", { email, password });
+  const login = useCallback(async (usernameOrEmail, password) => {
+    const r = await api.post("/auth/login", { username_or_email: usernameOrEmail, password });
     const { token, user: u } = r.data;
     localStorage.setItem(keyFor(u.role), JSON.stringify({ token, user: u }));
     setAuthToken(token);

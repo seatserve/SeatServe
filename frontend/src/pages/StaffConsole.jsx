@@ -167,7 +167,14 @@ const StaffOrdersList = ({ slug, info, onLogout }) => {
                 <div className="rounded-xl bg-[#0A0A0A] border border-white/10 p-3 flex items-center justify-between">
                   <div>
                     <p className="text-[10px] tracking-[0.25em] uppercase text-white/40 font-semibold">Seat</p>
-                    <p className="font-display text-base mt-0.5">S{o.screen}-{o.seat}</p>
+                    <p className="font-display text-base mt-0.5">
+                      S{o.screen} - Seat {o.seat}
+                      {o.additional_seats && o.additional_seats.length > 0 && (
+                        <span className="text-xs text-white/40 block mt-0.5 font-normal">
+                          + Seats: {o.additional_seats.join(", ")}
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <p className="text-xs text-white/50 font-mono">{timeAgo(o.created_at)}</p>
                 </div>

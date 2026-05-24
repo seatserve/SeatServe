@@ -104,6 +104,34 @@ const MultiplexCard = ({ mx, onChanged }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const impersonate = () => {
+    // Save current super admin session for return
+    const saSession = localStorage.getItem("cinebites_auth_super_admin");
+    if (saSession) {
+      localStorage.setItem("cinebites_auth_super_admin_saved", saSession);
+    }
+    
+    // Create temporary owner session for the multiplex
+    const ownerSession = {
+      token: JSON.parse(saSession).token,
+      user: {
+        id: mx.id,
+        email: mx.owner_email,
+        username: mx.owner_username || mx.slug,
+        role: "owner",
+        multiplex_id: mx.id,
+        multiplex_slug: mx.slug,
+        name: mx.name + " (Super Admin)",
+        is_impersonating: true
+      }
+    };
+    
+    localStorage.setItem("cinebites_auth_owner", JSON.stringify(ownerSession));
+    
+    // Redirect to the owner dashboard
+    window.location.href = "/owner";
+  };
+
   return (
     <article className="rounded-2xl bg-[#141414] border border-white/10 p-5 flex flex-col gap-4 cb-enter" data-testid={`mx-card-${mx.slug}`}>
       <div className="flex items-start justify-between gap-3">
@@ -116,7 +144,7 @@ const MultiplexCard = ({ mx, onChanged }) => {
             <p className="text-xs text-white/50 font-mono truncate">/m/{mx.slug}</p>
           </div>
         </div>
-        <button onClick={del} data-testid={`delete-mx-${mx.slug}`} className="w-9 h-9 rounded-full bg-white/5 hover:bg-[#E50914]/20 border border-white/10 flex items-center justify-center text-white/60 hover:text-[#E50914] transition-all">
+        <button onClick={del} data-testid={`delete-mx-${mx.slug}`} className="w-9 h-9 rounded-full bg-white/5 hover:bg-[#E50914]/20 border border-white/10 flex items-center justify-center text-white/60 hover:text-[#E50914] transition-all" title="Delete Multiplex">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -131,23 +159,32 @@ const MultiplexCard = ({ mx, onChanged }) => {
           <p className="font-display text-lg mt-1 text-[#10B981]">₹{mx.total_revenue.toFixed(0)}</p>
         </div>
         <div className="rounded-xl bg-[#0A0A0A] border border-white/10 p-3">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-white/40 font-semibold">Items</p>
-          <p className="font-display text-xl mt-1">{mx.menu_items}</p>
+          <p className="text-[10px] tracking-[0.2em] uppercase text-white/40 font-semibold">Min Order</p>
+          <p className="font-display text-lg mt-1 text-white/90">₹{mx.minimum_order_value || 150}</p>
         </div>
       </div>
 
-      <div className="rounded-xl bg-[#0A0A0A] border border-white/10 p-3">
-        <p className="text-[10px] tracking-[0.2em] uppercase text-white/40 font-semibold mb-1">Owner login</p>
-        <p className="text-xs font-mono text-white/70 break-all">{mx.owner_email}</p>
+      <div className="rounded-xl bg-[#0A0A0A] border border-white/10 p-3 space-y-1">
+        <div className="flex justify-between text-xs">
+          <span className="text-white/40 font-semibold uppercase tracking-wider text-[9px]">Admin Username</span>
+          <span className="text-white/80 font-mono font-bold">{mx.owner_username || mx.slug}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-white/40 font-semibold uppercase tracking-wider text-[9px]">Admin Email</span>
+          <span className="text-white/70 font-mono truncate max-w-[170px]">{mx.owner_email}</span>
+        </div>
       </div>
 
       <div className="flex gap-2">
+        <button onClick={impersonate} className="flex-1 rounded-full bg-[#E50914]/90 hover:bg-[#E50914] text-white py-2.5 text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md shadow-[#E50914]/25">
+          <Shield className="w-3 h-3" /> Manage Dashboard
+        </button>
         <Link to={`/m/${mx.slug}/order?screen=1&seat=A1`} target="_blank" rel="noreferrer"
-          className="flex-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 py-2.5 text-xs text-center inline-flex items-center justify-center gap-1.5 transition-all">
-          <ExternalLink className="w-3 h-3" /> Customer view
+          className="rounded-full bg-white/5 hover:bg-white/10 border border-white/10 w-10 h-10 flex items-center justify-center transition-all" title="Customer View">
+          <ExternalLink className="w-4 h-4 text-white/70" />
         </Link>
-        <button onClick={copyOwnerUrl} className="rounded-full bg-white/5 hover:bg-white/10 border border-white/10 w-9 h-9 flex items-center justify-center transition-all" aria-label="Copy owner URL">
-          {copied ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5" />}
+        <button onClick={copyOwnerUrl} className="rounded-full bg-white/5 hover:bg-white/10 border border-white/10 w-10 h-10 flex items-center justify-center transition-all" title="Copy Login Details">
+          {copied ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5 text-white/70" />}
         </button>
       </div>
     </article>
@@ -156,8 +193,9 @@ const MultiplexCard = ({ mx, onChanged }) => {
 
 const CreateMultiplexForm = ({ onDone, onCancel }) => {
   const [form, setForm] = useState({
-    name: "", slug: "", owner_email: "", owner_password: "",
+    name: "", slug: "", owner_email: "", owner_username: "", owner_password: "",
     owner_name: "", staff_pin: "1234", primary_color: "#E50914", logo: "",
+    minimum_order_value: "150",
   });
   const [err, setErr] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -170,6 +208,7 @@ const CreateMultiplexForm = ({ onDone, onCancel }) => {
       const body = { ...form };
       if (!body.slug.trim()) delete body.slug;
       if (!body.logo.trim()) delete body.logo;
+      body.minimum_order_value = parseFloat(body.minimum_order_value) || 150;
       await api.post("/super-admin/multiplexes", body);
       onDone();
     } catch (e) {
@@ -186,25 +225,31 @@ const CreateMultiplexForm = ({ onDone, onCancel }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="Multiplex Name *">
-          <input data-testid="mx-name-input" value={form.name} onChange={on("name")} required className="sa-input" placeholder="PVR Forum" />
+          <input data-testid="mx-name-input" value={form.name} onChange={on("name")} required className="sa-input" placeholder="e.g. Apsara Cinemas" />
         </Field>
         <Field label="URL slug (optional, auto-generated)">
-          <input data-testid="mx-slug-input" value={form.slug} onChange={on("slug")} className="sa-input" placeholder="pvr-forum" />
+          <input data-testid="mx-slug-input" value={form.slug} onChange={on("slug")} className="sa-input" placeholder="apsara-cinemas" />
         </Field>
-        <Field label="Owner Email *">
-          <input data-testid="mx-owner-email-input" type="email" value={form.owner_email} onChange={on("owner_email")} required className="sa-input" placeholder="manager@pvr-forum.in" />
+        <Field label="Multiplex Admin Username *">
+          <input data-testid="mx-owner-username-input" value={form.owner_username} onChange={on("owner_username")} required className="sa-input" placeholder="e.g. Apsara" />
         </Field>
-        <Field label="Owner Password *">
+        <Field label="Multiplex Admin Email *">
+          <input data-testid="mx-owner-email-input" type="email" value={form.owner_email} onChange={on("owner_email")} required className="sa-input" placeholder="e.g. admin@apsara.in" />
+        </Field>
+        <Field label="Multiplex Admin Password *">
           <input data-testid="mx-owner-password-input" type="text" value={form.owner_password} onChange={on("owner_password")} required minLength={6} className="sa-input" placeholder="min 6 chars" />
         </Field>
-        <Field label="Owner Name">
+        <Field label="Admin Contact Name">
           <input data-testid="mx-owner-name-input" value={form.owner_name} onChange={on("owner_name")} className="sa-input" placeholder="e.g. Rahul Kumar" />
         </Field>
         <Field label="Staff PIN (for kitchen)">
           <input data-testid="mx-pin-input" value={form.staff_pin} onChange={on("staff_pin")} className="sa-input" placeholder="1234" />
         </Field>
-        <Field label="Primary Color">
-          <input data-testid="mx-color-input" type="color" value={form.primary_color} onChange={on("primary_color")} className="sa-input h-12 p-1.5" />
+        <Field label="Minimum Order Value (₹) *">
+          <input data-testid="mx-min-order-input" type="number" min="0" value={form.minimum_order_value} onChange={on("minimum_order_value")} required className="sa-input" placeholder="150" />
+        </Field>
+        <Field label="Primary Theme Color">
+          <input data-testid="mx-color-input" type="color" value={form.primary_color} onChange={on("primary_color")} className="sa-input h-12 p-1.5 bg-[#0A0A0A] border border-white/10 rounded-xl cursor-pointer w-full" />
         </Field>
         <Field label="Logo URL (optional)">
           <input data-testid="mx-logo-input" value={form.logo} onChange={on("logo")} className="sa-input" placeholder="https://…" />

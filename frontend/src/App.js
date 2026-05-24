@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
 import { setAuthToken, api } from "./lib/api";
+import LoginPage from "./pages/LoginPage";
 import QRDemoPage from "./pages/QRDemoPage";
 import SeatLandingPage from "./pages/SeatLandingPage";
 import MenuPage from "./pages/MenuPage";
@@ -42,7 +43,8 @@ function App() {
         <AuthProvider>
           <CartProvider>
             <Routes>
-              <Route path="/" element={<QRDemoPage />} />
+              <Route path="/" element={<LoginPage />} />
+              <Route path="/qr-demo" element={<QRDemoPage />} />
 
               {/* Platform auth */}
               <Route path="/super-admin/login" element={<SuperAdminLogin />} />

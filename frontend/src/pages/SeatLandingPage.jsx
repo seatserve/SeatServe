@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, useParams, Link } from "react-router-dom"
 import { api } from "../lib/api";
 import { useCart } from "../context/CartContext";
 import { PrimaryButton } from "../components/Shared";
-import { Armchair, Ticket } from "lucide-react";
+import { Armchair, Ticket, Plus, Check } from "lucide-react";
 
 export default function SeatLandingPage() {
   const { slug } = useParams();
@@ -13,6 +13,7 @@ export default function SeatLandingPage() {
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [additionalSeats, setAdditionalSeats] = useState([]);
   const { setSeat, clearCart, seat: storedSeat } = useCart();
   const navigate = useNavigate();
 
@@ -24,69 +25,137 @@ export default function SeatLandingPage() {
       if (storedSeat && (storedSeat.slug !== slug || storedSeat.screen !== screen || storedSeat.seat !== seat)) {
         clearCart();
       }
-      setSeat({ ...r.data, slug });
+      // Initialize with base data
+      setSeat({ ...r.data, slug, additional_seats: [] });
       setLoading(false);
     }).catch((e) => {
       if (!cancelled) { setErr("Multiplex not found or QR invalid."); setLoading(false); }
     });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, seat, slug]);
+  }, [screen, seat, slug, clearCart, setSeat]);
+
+  const activeScreen = info?.screens?.find(s => s.name === screen);
+  const availableSeats = activeScreen ? activeScreen.seats.filter(s => s !== seat) : [];
+
+  const handleStartOrdering = () => {
+    // Save seat info with selected additional seats
+    setSeat({
+      ...info,
+      slug,
+      additional_seats: additionalSeats
+    });
+    navigate(`/m/${slug}/menu`);
+  };
+
+  const toggleSeat = (s) => {
+    if (additionalSeats.includes(s)) {
+      setAdditionalSeats(additionalSeats.filter(x => x !== s));
+    } else {
+      setAdditionalSeats([...additionalSeats, s]);
+    }
+  };
 
   return (
-    <div className="min-h-screen relative cb-grain">
+    <div className="min-h-screen relative cb-grain font-sans">
       <div className="absolute inset-0 pointer-events-none">
         <img src="https://images.pexels.com/photos/7991127/pexels-photo-7991127.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
-          alt="" className="w-full h-[55vh] object-cover opacity-30" />
+          alt="" className="w-full h-[55vh] object-cover opacity-30 animate-fade-in" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A]/50 via-[#0A0A0A]/85 to-[#0A0A0A]" />
       </div>
 
-      <main className="relative max-w-md mx-auto px-5 pt-10 pb-10 min-h-screen flex flex-col">
+      <main className="relative max-w-md mx-auto px-5 pt-10 pb-10 min-h-screen flex flex-col justify-between">
+        
         <div className="cb-enter">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-[10px] tracking-[0.25em] uppercase text-[#F5C518] font-semibold">
             <Ticket className="w-3.5 h-3.5" />
             QR verified
           </span>
-          <p className="text-[10px] tracking-[0.25em] uppercase text-[#E50914]/80 font-semibold mt-8">CineBites</p>
+          <p className="text-[10px] tracking-[0.25em] uppercase text-[#E50914]/80 font-semibold mt-8">SeatServe</p>
           <h1 className="font-display text-5xl leading-[1.05] tracking-tight mt-2">
             Welcome to<br />
             <span className="text-white/90">the movies.</span>
           </h1>
-          <p className="text-white/60 mt-4 leading-relaxed">
+          <p className="text-white/60 mt-4 leading-relaxed text-sm">
             Your seat just unlocked the menu. We'll deliver right to you — quietly.
           </p>
         </div>
 
-        <div className="mt-10 rounded-3xl bg-white/[0.04] border border-white/10 p-6 cb-seat-glow cb-enter-delay-1" data-testid="seat-landing-card">
+        <div className="mt-8 rounded-3xl bg-white/[0.04] border border-white/10 p-6 cb-seat-glow cb-enter-delay-1" data-testid="seat-landing-card">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-[#E50914]/15 border border-[#E50914]/30 flex items-center justify-center">
               <Armchair className="w-5 h-5 text-[#E50914]" />
             </div>
             <div>
               <p className="text-[10px] tracking-[0.25em] uppercase text-white/50 font-semibold">Delivering to</p>
-              <p className="font-display text-xl leading-tight" data-testid="landing-theater-name">
+              <p className="font-display text-xl leading-tight text-white" data-testid="landing-theater-name">
                 {loading ? "Loading..." : err ? "—" : info?.theater}
               </p>
             </div>
           </div>
+
           <div className="flex items-center gap-3 mt-5">
             <div className="flex-1 rounded-xl bg-[#0A0A0A] border border-white/10 p-4">
               <p className="text-[10px] tracking-[0.25em] uppercase text-white/40 font-semibold">Screen</p>
-              <p className="font-display text-3xl mt-1" data-testid="landing-screen">{screen}</p>
+              <p className="font-display text-3xl mt-1 text-white" data-testid="landing-screen">{screen}</p>
             </div>
             <div className="flex-1 rounded-xl bg-[#0A0A0A] border border-white/10 p-4">
               <p className="text-[10px] tracking-[0.25em] uppercase text-white/40 font-semibold">Seat</p>
-              <p className="font-display text-3xl mt-1" data-testid="landing-seat">{seat}</p>
+              <p className="font-display text-3xl mt-1 text-white" data-testid="landing-seat">{seat}</p>
             </div>
           </div>
-          <p className="mt-5 text-center text-sm text-white/60" data-testid="landing-delivery-msg">
-            You are ordering to <span className="text-white font-semibold">Seat {seat}</span>
+
+          {/* Deliver with friends option */}
+          {!loading && !err && info?.screens && (
+            <div className="mt-5 pt-5 border-t border-white/5 space-y-3">
+              <div>
+                <p className="text-[10px] tracking-[0.15em] uppercase text-white/50 font-bold flex items-center gap-1.5">
+                  Ordering with friends?
+                </p>
+                <p className="text-[11px] text-white/40 leading-relaxed mt-0.5">
+                  Select extra seats in your row to package all food tickets together.
+                </p>
+              </div>
+              
+              <div className="flex gap-1.5 flex-wrap max-h-[110px] overflow-y-auto p-2 bg-black/30 rounded-2xl border border-white/5">
+                {availableSeats.length === 0 ? (
+                  <span className="text-xs text-white/30 py-2 italic w-full text-center">No other seats found in Screen</span>
+                ) : (
+                  availableSeats.map(s => {
+                    const isSelected = additionalSeats.includes(s);
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleSeat(s)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-95 flex items-center gap-1 ${
+                          isSelected 
+                            ? "bg-[#E50914] text-white border-[#E50914]" 
+                            : "bg-white/5 text-white/60 border-white/10 hover:border-white/20"
+                        }`}
+                      >
+                        {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        {s}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          <p className="mt-5 text-center text-xs text-white/50 font-medium" data-testid="landing-delivery-msg">
+            Primary delivery location: <span className="text-white font-semibold">Seat {seat}</span>
+            {additionalSeats.length > 0 && (
+              <span className="block text-white/70 font-semibold mt-1">
+                + Group delivery to: {additionalSeats.join(", ")}
+              </span>
+            )}
           </p>
           {err && <p className="mt-3 text-center text-sm text-[#E50914]" data-testid="landing-error">{err}</p>}
         </div>
 
-        <div className="mt-auto pt-10 cb-enter-delay-2">
-          <PrimaryButton testId="start-ordering-btn" onClick={() => navigate(`/m/${slug}/menu`)} disabled={loading || !!err}>
+        <div className="mt-8 pt-6">
+          <PrimaryButton testId="start-ordering-btn" onClick={handleStartOrdering} disabled={loading || !!err}>
             Start Ordering
           </PrimaryButton>
           <Link to="/" data-testid="wrong-seat-link"
@@ -94,6 +163,7 @@ export default function SeatLandingPage() {
             Wrong seat? Rescan
           </Link>
         </div>
+
       </main>
     </div>
   );
