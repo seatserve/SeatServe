@@ -10,6 +10,14 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
         <title>SeatServe | In-Seat Dining Ordering</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+        <script>
+            (function () {
+                const redirectPath = new URLSearchParams(window.location.search).get("p");
+                if (redirectPath) {
+                    window.history.replaceState(null, "", decodeURIComponent(redirectPath));
+                }
+            })();
+        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

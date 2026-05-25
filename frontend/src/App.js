@@ -39,7 +39,7 @@ function App() {
   useEffect(() => { restore(); }, []);
   return (
     <div className="App">
-      <BrowserRouter>
+      <BrowserRouter basename={process.env.PUBLIC_URL || "/"}>
         <AuthProvider>
           <CartProvider>
             <Routes>
