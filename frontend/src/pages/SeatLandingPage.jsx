@@ -32,7 +32,7 @@ export default function SeatLandingPage() {
       if (!cancelled) { setErr("Multiplex not found or QR invalid."); setLoading(false); }
     });
     return () => { cancelled = true; };
-  }, [screen, seat, slug, clearCart, setSeat]);
+  }, [screen, seat, slug, clearCart, setSeat, storedSeat]);
 
   const activeScreen = info?.screens?.find(s => s.name === screen);
   const availableSeats = activeScreen ? activeScreen.seats.filter(s => s !== seat) : [];
