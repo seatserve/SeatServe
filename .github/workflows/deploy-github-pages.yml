@@ -36,7 +36,7 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
-          REACT_APP_BACKEND_URL: ${{ vars.REACT_APP_BACKEND_URL || 'https://seatserve.online' }}
+          REACT_APP_BACKEND_URL: https://seatserve.online
           PUBLIC_URL: /${{ github.event.repository.name }}
         run: npm run build
 
