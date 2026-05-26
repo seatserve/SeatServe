@@ -33,9 +33,14 @@ jobs:
         working-directory: frontend
         run: npm install --no-package-lock
 
+      - name: Clean previous build output
+        working-directory: frontend
+        run: rm -rf build
+
       - name: Build frontend
         working-directory: frontend
         env:
+          CI: true
           REACT_APP_BACKEND_URL: https://seatserve.online
           PUBLIC_URL: /${{ github.event.repository.name }}
         run: npm run build
