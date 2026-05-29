@@ -72,6 +72,8 @@ export default function OwnerDashboard() {
 
   // Exit Impersonation Mode
   const isImpersonating = localStorage.getItem("cinebites_auth_super_admin_saved") !== null;
+  const isMasterAdmin = user?.role === "super_admin" || user?.is_impersonating || isImpersonating;
+
   const exitImpersonate = () => {
     localStorage.removeItem("cinebites_auth_owner");
     const sa = localStorage.getItem("cinebites_auth_super_admin_saved");
@@ -127,7 +129,9 @@ export default function OwnerDashboard() {
           <TabBtn active={tab === "sales"} onClick={() => setTab("sales")} testId="tab-sales" Icon={BarChart3} label="Sales" />
           <TabBtn active={tab === "orders"} onClick={() => setTab("orders")} testId="tab-orders" Icon={ShoppingBag} label="Orders" />
           <TabBtn active={tab === "menu"} onClick={() => setTab("menu")} testId="tab-menu" Icon={Package} label="Menu" />
-          <TabBtn active={tab === "settings"} onClick={() => setTab("settings")} testId="tab-settings" Icon={Settings} label="Screens & Settings" />
+          {isMasterAdmin && (
+            <TabBtn active={tab === "settings"} onClick={() => setTab("settings")} testId="tab-settings" Icon={Settings} label="Screens & Settings" />
+          )}
         </nav>
       </div>
 
@@ -135,7 +139,7 @@ export default function OwnerDashboard() {
         {tab === "sales" && <SalesTab slug={slug} />}
         {tab === "orders" && <OrdersTab slug={slug} />}
         {tab === "menu" && <InventoryManager slug={slug} />}
-        {tab === "settings" && <SettingsTab slug={slug} />}
+        {tab === "settings" && isMasterAdmin && <SettingsTab slug={slug} />}
       </main>
     </div>
   );
