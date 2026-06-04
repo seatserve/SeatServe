@@ -30,7 +30,7 @@ Recommended MVP deployment:
 | --- | --- |
 | React frontend | Vercel |
 | FastAPI backend | Render |
-| Database | MongoDB Atlas now, PostgreSQL/Supabase later if needed |
+| Database | MongoDB Compass now, PostgreSQL/Supabase later if needed |
 
 ## Render Backend
 
