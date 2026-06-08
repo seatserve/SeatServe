@@ -19,11 +19,17 @@ export default function InventoryManager({ slug }) {
   const [form, setForm] = useState(emptyForm);
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState("");
+  const [menuPhotosEnabled, setMenuPhotosEnabled] = useState(true);
 
   const fetchItems = useCallback(async () => {
-    const [m, c] = await Promise.all([api.get(`/m/${slug}/menu`), api.get(`/m/${slug}/categories`)]);
+    const [m, c, info] = await Promise.all([
+      api.get(`/m/${slug}/menu`),
+      api.get(`/m/${slug}/categories`),
+      api.get(`/m/${slug}/info`)
+    ]);
     setItems(m.data);
     setCategories(c.data && c.data.length ? c.data : DEFAULT_CATEGORIES);
+    setMenuPhotosEnabled(info.data.menu_photos_enabled ?? true);
     setLoading(false);
   }, [slug]);
 
@@ -36,7 +42,7 @@ export default function InventoryManager({ slug }) {
     setEditingId(item.id); setShowAdd(false);
     setForm({
       name: item.name, description: item.description || "",
-      price: String(item.price), category: item.category, image: item.image,
+      price: String(item.price), category: item.category, image: item.image || "",
       is_available: item.is_available !== false,
       stock_count: item.stock_count ?? "",
     });
@@ -45,7 +51,7 @@ export default function InventoryManager({ slug }) {
 
   const validate = () => {
     if (!form.name.trim()) return "Name required";
-    if (!form.image.trim()) return "Image URL required";
+    if (menuPhotosEnabled && !form.image.trim()) return "Image URL required";
     if (!form.category.trim()) return "Category required";
     const price = parseFloat(form.price);
     if (!price || price <= 0) return "Price must be positive";
@@ -61,7 +67,7 @@ export default function InventoryManager({ slug }) {
       description: form.description.trim(),
       price: parseFloat(form.price),
       category: form.category.trim(),
-      image: form.image.trim(),
+      image: menuPhotosEnabled ? form.image.trim() : "",
       is_available: form.is_available,
       stock_count: form.stock_count === "" ? null : parseInt(form.stock_count),
     };
@@ -115,7 +121,7 @@ export default function InventoryManager({ slug }) {
       </div>
 
       {showAdd && <ItemForm form={form} setForm={setForm} onSubmit={submit} onCancel={resetForm}
-        title="Add New Item" error={error} submitLabel="Create Item" testIdPrefix="add" categories={categories} />}
+        title="Add New Item" error={error} submitLabel="Create Item" testIdPrefix="add" categories={categories} menuPhotosEnabled={menuPhotosEnabled} />}
 
       <section className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="inventory-grid">
         {loading && <p className="text-white/50">Loading…</p>}
@@ -124,22 +130,35 @@ export default function InventoryManager({ slug }) {
           if (editingId === item.id) {
             return <div key={item.id} className="md:col-span-2 lg:col-span-3">
               <ItemForm form={form} setForm={setForm} onSubmit={submit} onCancel={resetForm}
-                title={`Edit: ${item.name}`} error={error} submitLabel="Save Changes" testIdPrefix="edit" categories={categories} />
+                title={`Edit: ${item.name}`} error={error} submitLabel="Save Changes" testIdPrefix="edit" categories={categories} menuPhotosEnabled={menuPhotosEnabled} />
             </div>;
           }
           const soldOut = item.is_available === false;
           return (
             <article key={item.id} data-testid={`inv-item-${item.id}`}
               className={`rounded-2xl bg-[#141414] border border-white/10 overflow-hidden flex flex-col cb-enter ${soldOut ? "opacity-70" : ""}`}>
-              <div className="h-36 bg-[#0A0A0A] relative">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                {soldOut && <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <span className="text-xs tracking-[0.2em] uppercase font-bold text-[#E50914]">Sold Out</span>
-                </div>}
-                <span className="absolute top-3 left-3 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[10px] tracking-[0.2em] uppercase font-semibold text-white/90">
-                  {item.category}
-                </span>
-              </div>
+              {menuPhotosEnabled ? (
+                <div className="h-36 bg-[#0A0A0A] relative">
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  {soldOut && <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-xs tracking-[0.2em] uppercase font-bold text-[#E50914]">Sold Out</span>
+                  </div>}
+                  <span className="absolute top-3 left-3 rounded-full bg-black/70 backdrop-blur px-3 py-1 text-[10px] tracking-[0.2em] uppercase font-semibold text-white/90">
+                    {item.category}
+                  </span>
+                </div>
+              ) : (
+                <div className="p-4 pb-0 flex justify-between items-center">
+                  <span className="rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[10px] tracking-[0.2em] uppercase font-semibold text-white/70">
+                    {item.category}
+                  </span>
+                  {soldOut && (
+                    <span className="text-xs tracking-[0.2em] uppercase font-bold text-[#E50914] bg-[#E50914]/15 border border-[#E50914]/30 px-2 py-0.5 rounded-full">
+                      Sold Out
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="p-4 flex-1 flex flex-col gap-3">
                 <div>
                   <h3 className="font-display text-base leading-tight">{item.name}</h3>
@@ -186,7 +205,7 @@ const Stat = ({ label, value, color, Icon }) => (
   </div>
 );
 
-const ItemForm = ({ form, setForm, onSubmit, onCancel, title, error, submitLabel, testIdPrefix, categories = [] }) => {
+const ItemForm = ({ form, setForm, onSubmit, onCancel, title, error, submitLabel, testIdPrefix, categories = [], menuPhotosEnabled }) => {
   const on = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const listId = `${testIdPrefix}-cat-list`;
   return (
@@ -212,9 +231,11 @@ const ItemForm = ({ form, setForm, onSubmit, onCancel, title, error, submitLabel
         <Field label="Stock (empty = unlimited)">
           <input data-testid={`${testIdPrefix}-stock-input`} type="number" min="0" value={form.stock_count} onChange={on("stock_count")} className="inv-input" placeholder="blank = unlimited" />
         </Field>
-        <Field label="Image URL *" full>
-          <input data-testid={`${testIdPrefix}-image-input`} value={form.image} onChange={on("image")} className="inv-input" placeholder="https://…" />
-        </Field>
+        {menuPhotosEnabled && (
+          <Field label="Image URL *" full>
+            <input data-testid={`${testIdPrefix}-image-input`} value={form.image} onChange={on("image")} className="inv-input" placeholder="https://…" />
+          </Field>
+        )}
         <Field label="Description" full>
           <textarea data-testid={`${testIdPrefix}-description-input`} value={form.description} onChange={on("description")} rows={2} className="inv-input resize-none py-3" />
         </Field>

@@ -196,6 +196,7 @@ const CreateMultiplexForm = ({ onDone, onCancel }) => {
     name: "", slug: "", owner_email: "", owner_username: "", owner_password: "",
     owner_name: "", staff_pin: "1234", primary_color: "#E50914", logo: "",
     minimum_order_value: "150",
+    menu_photos_enabled: true,
   });
   const [err, setErr] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -253,6 +254,18 @@ const CreateMultiplexForm = ({ onDone, onCancel }) => {
         </Field>
         <Field label="Logo URL (optional)">
           <input data-testid="mx-logo-input" value={form.logo} onChange={on("logo")} className="sa-input" placeholder="https://…" />
+        </Field>
+        <Field label="Enable Menu Photos">
+          <div className="flex items-center h-12">
+            <input 
+              type="checkbox" 
+              data-testid="mx-photos-enabled-input"
+              checked={form.menu_photos_enabled}
+              onChange={(e) => setForm({ ...form, menu_photos_enabled: e.target.checked })}
+              className="w-5 h-5 accent-[#E50914] cursor-pointer"
+            />
+            <span className="ml-3 text-sm text-white/70">Show photos for items in the customer menu</span>
+          </div>
         </Field>
       </div>
 

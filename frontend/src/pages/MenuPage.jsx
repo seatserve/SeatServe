@@ -14,16 +14,22 @@ export default function MenuPage() {
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
   const [loading, setLoading] = useState(true);
+  const [menuPhotosEnabled, setMenuPhotosEnabled] = useState(true);
   const { items, addItem, decrementItem, seat } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!seat || seat.slug !== slug) { navigate("/"); return; }
-    Promise.all([api.get(`/m/${slug}/menu`), api.get(`/m/${slug}/categories`)]).then(([m, c]) => {
+    Promise.all([
+      api.get(`/m/${slug}/menu`),
+      api.get(`/m/${slug}/categories`),
+      api.get(`/m/${slug}/info`)
+    ]).then(([m, c, info]) => {
       setMenu(m.data);
       const cats = c.data && c.data.length ? c.data : DEFAULT_CATEGORIES;
       setCategories(cats);
       if (!cats.includes(category)) setCategory(cats[0]);
+      setMenuPhotosEnabled(info.data.menu_photos_enabled ?? true);
       setLoading(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,12 +74,14 @@ export default function MenuPage() {
               <article key={item.id} data-testid={`menu-item-${item.id}`}
                 className={`rounded-2xl bg-[#141414] border border-white/5 overflow-hidden flex gap-4 p-3 transition-all hover:bg-white/[0.03] cb-enter ${soldOut ? "opacity-50" : ""}`}
                 style={{ animationDelay: `${idx * 40}ms` }}>
-                <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[#0A0A0A] relative">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                  {soldOut && <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="text-[9px] tracking-[0.2em] uppercase font-bold text-[#E50914]">Sold Out</span>
-                  </div>}
-                </div>
+                {menuPhotosEnabled && (
+                  <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[#0A0A0A] relative">
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                    {soldOut && <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="text-[9px] tracking-[0.2em] uppercase font-bold text-[#E50914]">Sold Out</span>
+                    </div>}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                   <div>
                     <h3 className="font-display text-base leading-tight">{item.name}</h3>

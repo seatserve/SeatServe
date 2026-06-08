@@ -47,15 +47,19 @@ export default function CartPage() {
         ) : (
           <>
             <section className="mt-6 space-y-3" data-testid="cart-items">
-              {items.map((it) => (
-                <article key={it.item_id} data-testid={`cart-item-${it.item_id}`}
-                  className="rounded-2xl bg-[#141414] border border-white/5 p-3 flex gap-3 cb-enter">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[#0A0A0A]">
-                    <img src={it.image} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between gap-3">
-                      <h3 className="font-display text-sm leading-tight text-white/90">{it.name}</h3>
+              {items.map((it) => {
+                const menuPhotosEnabled = seat?.menu_photos_enabled ?? true;
+                return (
+                  <article key={it.item_id} data-testid={`cart-item-${it.item_id}`}
+                    className="rounded-2xl bg-[#141414] border border-white/5 p-3 flex gap-3 cb-enter">
+                    {menuPhotosEnabled && (
+                      <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-[#0A0A0A]">
+                        <img src={it.image} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between gap-3">
+                        <h3 className="font-display text-sm leading-tight text-white/90">{it.name}</h3>
                       <button onClick={() => removeItem(it.item_id)} data-testid={`remove-${it.item_id}`}
                         className="text-white/40 hover:text-[#E50914] transition-colors" aria-label="Remove">
                         <Trash2 className="w-4 h-4" />
@@ -77,7 +81,7 @@ export default function CartPage() {
                     </div>
                   </div>
                 </article>
-              ))}
+              )})}
             </section>
 
             {/* Special instructions */}

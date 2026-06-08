@@ -73,6 +73,7 @@ class MultiplexCreate(BaseModel):
     owner_name: Optional[str] = None
     minimum_order_value: float = 150.0
     screens: List[dict] = []
+    menu_photos_enabled: bool = True
 
 
 class Multiplex(BaseModel):
@@ -87,6 +88,7 @@ class Multiplex(BaseModel):
     created_at: str
     minimum_order_value: float = 150.0
     screens: List[dict] = []
+    menu_photos_enabled: bool = True
 
 
 class MultiplexPublic(BaseModel):
@@ -97,6 +99,7 @@ class MultiplexPublic(BaseModel):
     primary_color: str = "#E50914"
     minimum_order_value: float = 150.0
     screens: List[dict] = []
+    menu_photos_enabled: bool = True
 
 
 class MultiplexSummary(BaseModel):
@@ -112,6 +115,7 @@ class MultiplexSummary(BaseModel):
     menu_items: int
     created_at: str
     minimum_order_value: float = 150.0
+    menu_photos_enabled: bool = True
 
 
 # --- Menu ---
@@ -122,7 +126,7 @@ class MenuItem(BaseModel):
     description: str = ""
     price: float
     category: str
-    image: str
+    image: str = ""
     is_available: bool = True
     stock_count: Optional[int] = None
 
@@ -132,7 +136,7 @@ class MenuItemCreate(BaseModel):
     description: str = ""
     price: float
     category: str
-    image: str
+    image: str = ""
     is_available: bool = True
     stock_count: Optional[int] = None
 
@@ -253,7 +257,8 @@ async def seed_default_multiplex():
                 "name": "Screen 1",
                 "seats": [f"A{i}" for i in range(1, 21)]
             }
-        ]
+        ],
+        "menu_photos_enabled": True
     })
     # seed owner
     await db.users.insert_one({
@@ -294,7 +299,8 @@ async def seed_apsara_multiplex():
                 "name": "Screen 1",
                 "seats": seats
             }
-        ]
+        ],
+        "menu_photos_enabled": False
     })
     # seed owner user
     await db.users.insert_one({
@@ -323,6 +329,9 @@ async def startup():
     await seed_super_admin()
     await seed_default_multiplex()
     await seed_apsara_multiplex()
+    
+    # Ensure existing Apsara DTS multiplex has menu_photos_enabled set to False
+    await db.multiplexes.update_one({"slug": "apsara-4k-dts"}, {"$set": {"menu_photos_enabled": False}})
 
 
 # ---------- Helpers ----------
@@ -421,7 +430,8 @@ async def list_multiplexes(_: dict = Depends(require_roles("super_admin"))):
             owner_email=mx.get("owner_email", ""), owner_username=mx.get("owner_username"),
             total_orders=stats["count"], total_revenue=float(stats["revenue"]),
             menu_items=menu_count, created_at=mx.get("created_at", ""),
-            minimum_order_value=mx.get("minimum_order_value", 150.0)
+            minimum_order_value=mx.get("minimum_order_value", 150.0),
+            menu_photos_enabled=mx.get("menu_photos_enabled", True)
         ))
     return out
 
@@ -445,6 +455,7 @@ async def create_multiplex(req: MultiplexCreate, _: dict = Depends(require_roles
         "logo": req.logo, "primary_color": req.primary_color,
         "staff_pin": req.staff_pin, "owner_email": owner_email, "owner_username": owner_username,
         "minimum_order_value": req.minimum_order_value, "screens": req.screens or [], "created_at": now,
+        "menu_photos_enabled": req.menu_photos_enabled,
     })
     await db.users.insert_one({
         "id": str(uuid.uuid4()), "email": owner_email, "username": owner_username,
@@ -460,7 +471,8 @@ async def create_multiplex(req: MultiplexCreate, _: dict = Depends(require_roles
                             primary_color=req.primary_color, owner_email=owner_email,
                             owner_username=owner_username,
                             total_orders=0, total_revenue=0, menu_items=len(docs), created_at=now,
-                            minimum_order_value=req.minimum_order_value)
+                            minimum_order_value=req.minimum_order_value,
+                            menu_photos_enabled=req.menu_photos_enabled)
 
 
 @api_router.delete("/super-admin/multiplexes/{slug}")
@@ -482,7 +494,8 @@ async def public_info(slug: str):
     return MultiplexPublic(id=m["id"], slug=m["slug"], name=m["name"],
                            logo=m.get("logo"), primary_color=m.get("primary_color", "#E50914"),
                            minimum_order_value=m.get("minimum_order_value", 150.0),
-                           screens=m.get("screens", []))
+                           screens=m.get("screens", []),
+                           menu_photos_enabled=m.get("menu_photos_enabled", True))
 
 
 @api_router.get("/m/{slug}/theater-info")
@@ -491,7 +504,8 @@ async def public_theater_info(slug: str, screen: str, seat: str):
     return {"theater": m["name"], "screen": screen, "seat": seat,
             "slug": m["slug"], "primary_color": m.get("primary_color", "#E50914"),
             "logo": m.get("logo"), "minimum_order_value": m.get("minimum_order_value", 150.0),
-            "screens": m.get("screens", [])}
+            "screens": m.get("screens", []),
+            "menu_photos_enabled": m.get("menu_photos_enabled", True)}
 
 
 @api_router.get("/m/{slug}/menu", response_model=List[MenuItem])
@@ -605,15 +619,16 @@ async def list_orders(slug: str, payload: dict = Depends(require_roles("owner", 
 
 
 @api_router.get("/m/{slug}/settings")
-async def get_multiplex_settings(slug: str, payload: dict = Depends(require_roles("owner", "super_admin"))):
+async def get_multiplex_settings(slug: str, payload: dict = Depends(require_roles("super_admin"))):
     m = await scope_require(slug, payload)
+    m["menu_photos_enabled"] = m.get("menu_photos_enabled", True)
     return m
 
 
 @api_router.patch("/m/{slug}/settings")
-async def update_multiplex_settings(slug: str, body: dict, payload: dict = Depends(require_roles("owner", "super_admin"))):
+async def update_multiplex_settings(slug: str, body: dict, payload: dict = Depends(require_roles("super_admin"))):
     m = await scope_require(slug, payload)
-    updatable = ["name", "logo", "primary_color", "staff_pin", "minimum_order_value", "screens"]
+    updatable = ["name", "logo", "primary_color", "staff_pin", "minimum_order_value", "screens", "menu_photos_enabled"]
     updates = {k: v for k, v in body.items() if k in updatable}
     if "minimum_order_value" in updates:
         try:
@@ -627,6 +642,7 @@ async def update_multiplex_settings(slug: str, body: dict, payload: dict = Depen
         {"$set": updates},
         return_document=True, projection={"_id": 0}
     )
+    result["menu_photos_enabled"] = result.get("menu_photos_enabled", True)
     return result
 
 

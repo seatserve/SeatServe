@@ -405,6 +405,7 @@ const SettingsTab = ({ slug }) => {
         staff_pin: settings.staff_pin,
         primary_color: settings.primary_color,
         minimum_order_value: parseFloat(settings.minimum_order_value) || 0,
+        menu_photos_enabled: settings.menu_photos_enabled ?? true,
       });
       setSuccess("Identity settings saved successfully!");
       setTimeout(() => setSuccess(""), 4000);
@@ -662,6 +663,17 @@ const SettingsTab = ({ slug }) => {
           <label className="block">
             <span className="block text-[10px] uppercase tracking-wider text-white/40 mb-1.5 font-bold">Logo URL (optional)</span>
             <input type="text" value={settings.logo || ""} onChange={(e) => setSettings({ ...settings, logo: e.target.value })} placeholder="https://..." className="cb-input" />
+          </label>
+
+          <label className="flex items-center cursor-pointer pt-2">
+            <input 
+              type="checkbox" 
+              data-testid="mx-photos-enabled-settings-input"
+              checked={settings.menu_photos_enabled ?? true} 
+              onChange={(e) => setSettings({ ...settings, menu_photos_enabled: e.target.checked })} 
+              className="w-4 h-4 accent-[#E50914] cursor-pointer" 
+            />
+            <span className="ml-2.5 text-xs text-white/70">Enable Menu Photos</span>
           </label>
 
           {err && <p className="text-xs text-[#E50914]">{err}</p>}
