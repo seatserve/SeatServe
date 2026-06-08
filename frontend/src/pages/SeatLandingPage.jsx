@@ -7,13 +7,12 @@ import { Armchair, Ticket, Plus, Check } from "lucide-react";
 
 export default function SeatLandingPage() {
   const { slug } = useParams();
-  const [params] = useSearchParams();
+  const [params, setSearchParams] = useSearchParams();
   const screen = params.get("screen") || "1";
   const seat = params.get("seat") || "A1";
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [additionalSeats, setAdditionalSeats] = useState([]);
   const { setSeat, clearCart, seat: storedSeat } = useCart();
   const navigate = useNavigate();
 
@@ -35,14 +34,13 @@ export default function SeatLandingPage() {
   }, [screen, seat, slug, clearCart, setSeat, storedSeat]);
 
   const activeScreen = info?.screens?.find(s => s.name === screen);
-  const availableSeats = activeScreen ? activeScreen.seats.filter(s => s !== seat) : [];
+  const allSeats = activeScreen ? activeScreen.seats : [];
 
   const handleStartOrdering = () => {
-    // Save seat info with selected additional seats
     setSeat({
       ...info,
       slug,
-      additional_seats: additionalSeats
+      additional_seats: []
     });
     navigate(`/m/${slug}/menu`);
   };
@@ -104,53 +102,35 @@ export default function SeatLandingPage() {
             </div>
           </div>
 
-          {/* Deliver with friends option */}
-          {!loading && !err && info?.screens && (
+          {/* Order to another seat option */}
+          {!loading && !err && info?.screens && allSeats.length > 0 && (
             <div className="mt-5 pt-5 border-t border-white/5 space-y-3">
               <div>
-                <p className="text-[10px] tracking-[0.15em] uppercase text-white/50 font-bold flex items-center gap-1.5">
-                  Ordering with friends?
+                <p className="text-[10px] tracking-[0.15em] uppercase text-white/50 font-bold">
+                  Order to another seat?
                 </p>
                 <p className="text-[11px] text-white/40 leading-relaxed mt-0.5">
-                  Select extra seats in your row to package all food tickets together.
+                  Not sitting in {seat}? Change your seat number manually below.
                 </p>
               </div>
               
-              <div className="flex gap-1.5 flex-wrap max-h-[110px] overflow-y-auto p-2 bg-black/30 rounded-2xl border border-white/5">
-                {availableSeats.length === 0 ? (
-                  <span className="text-xs text-white/30 py-2 italic w-full text-center">No other seats found in Screen</span>
-                ) : (
-                  availableSeats.map(s => {
-                    const isSelected = additionalSeats.includes(s);
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => toggleSeat(s)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-95 flex items-center gap-1 ${
-                          isSelected 
-                            ? "bg-[#E50914] text-white border-[#E50914]" 
-                            : "bg-white/5 text-white/60 border-white/10 hover:border-white/20"
-                        }`}
-                      >
-                        {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                        {s}
-                      </button>
-                    );
-                  })
-                )}
+              <div className="flex gap-2">
+                <select
+                  data-testid="change-seat-select"
+                  value={seat}
+                  onChange={(e) => setSearchParams({ screen, seat: e.target.value })}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 h-12 text-sm text-white focus:border-[#E50914] outline-none transition-all cursor-pointer"
+                >
+                  {allSeats.map((s) => (
+                    <option key={s} value={s} className="bg-[#141414] text-white">
+                      Seat {s} {s === seat ? " (Current)" : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           )}
 
-          <p className="mt-5 text-center text-xs text-white/50 font-medium" data-testid="landing-delivery-msg">
-            Primary delivery location: <span className="text-white font-semibold">Seat {seat}</span>
-            {additionalSeats.length > 0 && (
-              <span className="block text-white/70 font-semibold mt-1">
-                + Group delivery to: {additionalSeats.join(", ")}
-              </span>
-            )}
-          </p>
           {err && <p className="mt-3 text-center text-sm text-[#E50914]" data-testid="landing-error">{err}</p>}
         </div>
 
@@ -158,10 +138,6 @@ export default function SeatLandingPage() {
           <PrimaryButton testId="start-ordering-btn" onClick={handleStartOrdering} disabled={loading || !!err}>
             Start Ordering
           </PrimaryButton>
-          <Link to="/" data-testid="wrong-seat-link"
-            className="mt-4 block text-center text-xs tracking-[0.15em] uppercase text-white/40 hover:text-white/70 transition-colors">
-            Wrong seat? Rescan
-          </Link>
         </div>
 
       </main>
