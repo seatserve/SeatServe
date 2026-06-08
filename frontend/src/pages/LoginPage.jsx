@@ -81,18 +81,18 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={submit} className="space-y-5" data-testid="login-form">
 
-          {/* Username/Email Input */}
+          {/* Email Input */}
           <div>
             <label className="block text-[10px] tracking-[0.2em] uppercase text-white/50 font-semibold mb-2 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" /> Username or Email
+              <User className="w-3.5 h-3.5" /> Email
             </label>
             <input
               data-testid="login-username-input"
-              type="text"
+              type="email"
               value={loginStr}
               onChange={(e) => setLoginStr(e.target.value)}
               className="w-full bg-[#070707] border border-white/10 rounded-xl h-12 px-4 text-white focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] outline-none transition-all placeholder:text-white/20"
-              placeholder="e.g. Apsara or owner@cinebites.in"
+              placeholder="e.g. owner@cinebites.in"
               required
             />
           </div>
