@@ -44,7 +44,7 @@ export default function OwnerLogin() {
         <label className="block text-[10px] tracking-[0.2em] uppercase text-white/50 font-semibold mb-1.5">Email</label>
         <input data-testid="owner-email-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
           className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl h-12 px-4 text-white focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] outline-none"
-          placeholder="manager@yourmultiplex.in" required />
+          required />
         <label className="block text-[10px] tracking-[0.2em] uppercase text-white/50 font-semibold mb-1.5 mt-4">Password</label>
         <input data-testid="owner-password-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
           className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl h-12 px-4 text-white focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] outline-none"

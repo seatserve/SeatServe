@@ -91,8 +91,7 @@ export default function LoginPage() {
               type="email"
               value={loginStr}
               onChange={(e) => setLoginStr(e.target.value)}
-              className="w-full bg-[#070707] border border-white/10 rounded-xl h-12 px-4 text-white focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] outline-none transition-all placeholder:text-white/20"
-              placeholder="e.g. owner@cinebites.in"
+              className="w-full bg-[#070707] border border-white/10 rounded-xl h-12 px-4 text-white focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] outline-none transition-all"
               required
             />
           </div>
