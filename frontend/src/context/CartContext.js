@@ -5,6 +5,7 @@ const CartContext = createContext(null);
 const LS_CART = "cinebites_cart_v1";
 const LS_SEAT = "cinebites_seat_v1";
 const LS_NOTES = "cinebites_notes_v1";
+const LS_CUSTOMER_PHONE = "cinebites_customer_phone_v1";
 
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState(() => {
@@ -16,13 +17,18 @@ export const CartProvider = ({ children }) => {
   const [notes, setNotesState] = useState(() => {
     try { return localStorage.getItem(LS_NOTES) || ""; } catch { return ""; }
   });
+  const [customerPhone, setCustomerPhoneState] = useState(() => {
+    try { return localStorage.getItem(LS_CUSTOMER_PHONE) || ""; } catch { return ""; }
+  });
 
   useEffect(() => { localStorage.setItem(LS_CART, JSON.stringify(items)); }, [items]);
   useEffect(() => { if (seat) localStorage.setItem(LS_SEAT, JSON.stringify(seat)); }, [seat]);
   useEffect(() => { localStorage.setItem(LS_NOTES, notes || ""); }, [notes]);
+  useEffect(() => { localStorage.setItem(LS_CUSTOMER_PHONE, customerPhone || ""); }, [customerPhone]);
 
   const setSeat = useCallback((s) => setSeatState(s), []);
   const setNotes = useCallback((n) => setNotesState(n), []);
+  const setCustomerPhone = useCallback((n) => setCustomerPhoneState(n), []);
 
   const addItem = useCallback((item) => {
     setItems((prev) => {
@@ -43,7 +49,7 @@ export const CartProvider = ({ children }) => {
     setItems((prev) => prev.filter((p) => p.item_id !== itemId));
   }, []);
 
-  const clearCart = useCallback(() => { setItems([]); setNotesState(""); }, []);
+  const clearCart = useCallback(() => { setItems([]); setNotesState(""); setCustomerPhoneState(""); }, []);
 
   const { totalCount, totalPrice } = useMemo(() => {
     const totalCount = items.reduce((s, i) => s + i.quantity, 0);
@@ -51,7 +57,7 @@ export const CartProvider = ({ children }) => {
     return { totalCount, totalPrice };
   }, [items]);
 
-  const value = { items, seat, setSeat, notes, setNotes, addItem, decrementItem, removeItem, clearCart, totalCount, totalPrice };
+  const value = { items, seat, setSeat, notes, setNotes, customerPhone, setCustomerPhone, addItem, decrementItem, removeItem, clearCart, totalCount, totalPrice };
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
