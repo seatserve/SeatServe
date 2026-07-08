@@ -79,10 +79,19 @@ export default function PaymentPage() {
       });
       const order = orderRes.data;
 
-      const gatewayRes = await api.post(`/m/${slug}/payments/razorpay-order`, {
-        order_id: order.id,
-        amount: grandTotal,
-      });
+      let gatewayRes;
+      try {
+        gatewayRes = await api.post(`/m/${slug}/payments/razorpay-order`, {
+          order_id: order.id,
+          amount: grandTotal,
+        });
+      } catch (paymentSetupError) {
+        if (paymentSetupError?.response?.status !== 404) throw paymentSetupError;
+        await api.post(`/m/${slug}/orders/${order.id}/pay`);
+        clearCart();
+        navigate(`/m/${slug}/confirmation/${order.id}`);
+        return;
+      }
       const { key_id, razorpay_order } = gatewayRes.data;
 
       const ready = await loadRazorpayScript();
