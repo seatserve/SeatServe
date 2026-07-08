@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams, useNavigate, useParams, Link } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useCart } from "../context/CartContext";
 import { PrimaryButton } from "../components/Shared";
-import { Armchair, Ticket, Plus, Check } from "lucide-react";
+import { Armchair, Ticket, Check } from "lucide-react";
+
+const parseSeatParts = (value = "") => {
+  const match = value.trim().toUpperCase().match(/^([A-Z]{1,3})([0-9]{1,3})$/);
+  return {
+    row: match ? match[1] : "",
+    number: match ? match[2] : "",
+  };
+};
+
+const buildSeat = (row, number) => `${row.trim().toUpperCase()}${number.trim()}`;
 
 export default function SeatLandingPage() {
   const { slug } = useParams();
@@ -13,8 +23,19 @@ export default function SeatLandingPage() {
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const initialSeatParts = parseSeatParts(seat);
+  const [seatRowInput, setSeatRowInput] = useState(initialSeatParts.row);
+  const [seatNumberInput, setSeatNumberInput] = useState(initialSeatParts.number);
+  const [seatInputError, setSeatInputError] = useState("");
   const { setSeat, clearCart, seat: storedSeat } = useCart();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const nextSeatParts = parseSeatParts(seat);
+    setSeatRowInput(nextSeatParts.row);
+    setSeatNumberInput(nextSeatParts.number);
+    setSeatInputError("");
+  }, [seat]);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,9 +54,6 @@ export default function SeatLandingPage() {
     return () => { cancelled = true; };
   }, [screen, seat, slug, clearCart, setSeat, storedSeat]);
 
-  const activeScreen = info?.screens?.find(s => s.name === screen);
-  const allSeats = activeScreen ? activeScreen.seats : [];
-
   const handleStartOrdering = () => {
     setSeat({
       ...info,
@@ -45,12 +63,14 @@ export default function SeatLandingPage() {
     navigate(`/m/${slug}/menu`);
   };
 
-  const toggleSeat = (s) => {
-    if (additionalSeats.includes(s)) {
-      setAdditionalSeats(additionalSeats.filter(x => x !== s));
-    } else {
-      setAdditionalSeats([...additionalSeats, s]);
+  const applySeatChange = () => {
+    const nextSeat = buildSeat(seatRowInput, seatNumberInput);
+    if (!/^[A-Z]{1,3}[0-9]{1,3}$/.test(nextSeat)) {
+      setSeatInputError("Enter the row letter and exact seat number, for example row A and seat 11.");
+      return;
     }
+    setSeatInputError("");
+    setSearchParams({ screen, seat: nextSeat });
   };
 
   return (
@@ -103,31 +123,55 @@ export default function SeatLandingPage() {
           </div>
 
           {/* Order to another seat option */}
-          {!loading && !err && info?.screens && allSeats.length > 0 && (
+          {!loading && !err && (
             <div className="mt-5 pt-5 border-t border-white/5 space-y-3">
               <div>
                 <p className="text-[10px] tracking-[0.15em] uppercase text-white/50 font-bold">
                   Order to another seat?
                 </p>
                 <p className="text-[11px] text-white/40 leading-relaxed mt-0.5">
-                  Not sitting in {seat}? Change your seat number manually below.
+                  Not sitting in {seat}? Enter your exact row and seat number below.
                 </p>
               </div>
               
-              <div className="flex gap-2">
-                <select
-                  data-testid="change-seat-select"
-                  value={seat}
-                  onChange={(e) => setSearchParams({ screen, seat: e.target.value })}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 h-12 text-sm text-white focus:border-[#E50914] outline-none transition-all cursor-pointer"
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_48px] gap-2">
+                <label className="block">
+                  <span className="sr-only">Seat row</span>
+                  <input
+                    data-testid="change-seat-row-input"
+                    value={seatRowInput}
+                    onChange={(e) => setSeatRowInput(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3))}
+                    onKeyDown={(e) => { if (e.key === "Enter") applySeatChange(); }}
+                    placeholder="Row"
+                    aria-label="Seat row"
+                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-3 h-12 text-sm text-white placeholder:text-white/30 focus:border-[#E50914] outline-none transition-all uppercase font-mono"
+                  />
+                </label>
+                <label className="block">
+                  <span className="sr-only">Seat number</span>
+                  <input
+                    data-testid="change-seat-number-input"
+                    value={seatNumberInput}
+                    onChange={(e) => setSeatNumberInput(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                    onKeyDown={(e) => { if (e.key === "Enter") applySeatChange(); }}
+                    inputMode="numeric"
+                    placeholder="Seat #"
+                    aria-label="Seat number"
+                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-3 h-12 text-sm text-white placeholder:text-white/30 focus:border-[#E50914] outline-none transition-all font-mono"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={applySeatChange}
+                  data-testid="apply-seat-btn"
+                  className="w-12 h-12 rounded-xl bg-[#E50914]/15 hover:bg-[#E50914]/25 border border-[#E50914]/40 text-[#E50914] flex items-center justify-center transition-all active:scale-95"
+                  aria-label="Apply seat"
                 >
-                  {allSeats.map((s) => (
-                    <option key={s} value={s} className="bg-[#141414] text-white">
-                      Seat {s} {s === seat ? " (Current)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  <Check className="w-4 h-4" />
+                </button>
               </div>
+              <p className="text-[10px] text-white/35">Example: Row A + Seat 11</p>
+              {seatInputError && <p className="text-xs text-[#E50914]" data-testid="seat-input-error">{seatInputError}</p>}
             </div>
           )}
 

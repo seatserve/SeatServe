@@ -1,22 +1,46 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CreditCard, Smartphone, Lock, X, ShieldAlert, Sparkles, CheckCircle2 } from "lucide-react";
+import { Armchair, CreditCard, Lock, Phone, Smartphone } from "lucide-react";
 import { api, formatApiError } from "../lib/api";
 import { useCart } from "../context/CartContext";
 import { AppHeader, PrimaryButton, SeatBadge } from "../components/Shared";
 
+const loadRazorpayScript = () => {
+  if (window.Razorpay) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
+const normalizePhone = (value) => value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+const validSeat = (value) => /^[A-Z]{1,3}[0-9]{1,3}$/.test(value.trim().toUpperCase());
+const parseSeatParts = (value = "") => {
+  const match = value.trim().toUpperCase().match(/^([A-Z]{1,3})([0-9]{1,3})$/);
+  return {
+    row: match ? match[1] : "",
+    number: match ? match[2] : "",
+  };
+};
+const buildSeat = (row, number) => `${row.trim().toUpperCase()}${number.trim()}`;
+
 export default function PaymentPage() {
   const { slug } = useParams();
-  const { items, totalPrice, seat, notes, clearCart } = useCart();
+  const { items, totalPrice, seat, setSeat, notes, customerPhone, setCustomerPhone, clearCart } = useCart();
   const navigate = useNavigate();
   const [method, setMethod] = useState("upi");
   const [placing, setPlacing] = useState(false);
   const [err, setErr] = useState("");
-  const [showRazorpay, setShowRazorpay] = useState(false);
-  const [payingState, setPayingState] = useState("idle"); // idle, paying, success, error
+  const initialSeatParts = parseSeatParts(seat?.seat || "");
+  const [seatRowInput, setSeatRowInput] = useState(initialSeatParts.row);
+  const [seatNumberInput, setSeatNumberInput] = useState(initialSeatParts.number);
 
-  const taxes = totalPrice * 0.05;
-  const grandTotal = totalPrice + taxes;
+  const grandTotal = totalPrice;
+  const phoneDigits = normalizePhone(customerPhone || "");
+  const cleanSeat = buildSeat(seatRowInput, seatNumberInput);
 
   if (!seat || seat.slug !== slug || items.length === 0) {
     return (
@@ -27,40 +51,79 @@ export default function PaymentPage() {
     );
   }
 
-  const triggerRazorpayCheckout = () => {
-    setShowRazorpay(true);
-  };
-
-  const handleRazorpayPayment = async () => {
-    setPlacing(true);
+  const startRazorpayPayment = async () => {
     setErr("");
-    setPayingState("paying");
+    if (!validSeat(cleanSeat)) {
+      setErr("Enter the row letter and exact seat number, for example row A and seat 11.");
+      return;
+    }
+    if (phoneDigits.length !== 10) {
+      setErr("Enter the customer's 10-digit phone number before confirming the order.");
+      return;
+    }
+
+    setPlacing(true);
     try {
-      // 1. Create the pending order
-      const res = await api.post(`/m/${slug}/orders`, {
-        screen: seat.screen,
-        seat: seat.seat,
-        additional_seats: seat.additional_seats || [],
+      const updatedSeat = { ...seat, seat: cleanSeat };
+      setSeat(updatedSeat);
+
+      const orderRes = await api.post(`/m/${slug}/orders`, {
+        screen: updatedSeat.screen,
+        seat: cleanSeat,
+        additional_seats: updatedSeat.additional_seats || [],
+        customer_phone: phoneDigits,
         items,
         payment_method: method,
         total: grandTotal,
         notes: notes || "",
       });
-      const order = res.data;
+      const order = orderRes.data;
 
-      // 2. Simulate short payment delay, then call /pay endpoint
-      await new Promise((r) => setTimeout(r, 1200));
-      await api.post(`/m/${slug}/orders/${order.id}/pay`);
+      const gatewayRes = await api.post(`/m/${slug}/payments/razorpay-order`, {
+        order_id: order.id,
+        amount: grandTotal,
+      });
+      const { key_id, razorpay_order } = gatewayRes.data;
 
-      setPayingState("success");
-      await new Promise((r) => setTimeout(r, 800));
-      
-      // 3. Clear cart and redirect
-      clearCart();
-      setShowRazorpay(false);
-      navigate(`/m/${slug}/confirmation/${order.id}`);
+      const ready = await loadRazorpayScript();
+      if (!ready) throw new Error("Razorpay checkout could not be loaded. Check your internet connection.");
+
+      const checkout = new window.Razorpay({
+        key: process.env.REACT_APP_RAZORPAY_KEY_ID || key_id,
+        amount: razorpay_order.amount,
+        currency: razorpay_order.currency,
+        name: "SeatServe",
+        description: `${seat.theater} - Screen ${updatedSeat.screen}, Seat ${cleanSeat}`,
+        order_id: razorpay_order.id,
+        prefill: { contact: phoneDigits },
+        method,
+        theme: { color: "#E50914" },
+        handler: async (payment) => {
+          try {
+            await api.post(`/m/${slug}/payments/razorpay-verify`, {
+              order_id: order.id,
+              razorpay_order_id: payment.razorpay_order_id,
+              razorpay_payment_id: payment.razorpay_payment_id,
+              razorpay_signature: payment.razorpay_signature,
+            });
+            clearCart();
+            navigate(`/m/${slug}/confirmation/${order.id}`);
+          } catch (e) {
+            setErr(formatApiError(e));
+            setPlacing(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setPlacing(false),
+        },
+      });
+
+      checkout.on("payment.failed", (response) => {
+        setErr(response?.error?.description || "Payment failed. Please try again.");
+        setPlacing(false);
+      });
+      checkout.open();
     } catch (e) {
-      setPayingState("error");
       setErr(formatApiError(e));
       setPlacing(false);
     }
@@ -69,22 +132,62 @@ export default function PaymentPage() {
   return (
     <div className="min-h-screen cb-grain pb-40">
       <AppHeader title="Payment" backTo={`/m/${slug}/cart`} testId="payment-header" />
-      
+
       <main className="max-w-md mx-auto px-5 pt-5">
         <div className="cb-enter">
-          <SeatBadge theater={seat.theater} screen={seat.screen} seat={seat.seat} testId="payment-seat-badge" />
-          {seat.additional_seats && seat.additional_seats.length > 0 && (
-            <div className="mt-2 text-center text-xs text-white/60 font-semibold uppercase tracking-wider bg-white/5 border border-white/5 rounded-full py-1">
-              + Additional Seats: {seat.additional_seats.join(", ")}
-            </div>
-          )}
+          <SeatBadge theater={seat.theater} screen={seat.screen} seat={cleanSeat || seat.seat} testId="payment-seat-badge" />
         </div>
+
+        <section className="mt-6 rounded-2xl bg-[#141414] border border-white/10 p-5 cb-enter-delay-1" data-testid="customer-details">
+          <div className="flex items-center gap-2 mb-4">
+            <Phone className="w-4 h-4 text-[#F5C518]" />
+            <p className="text-[10px] tracking-[0.25em] uppercase text-white/50 font-semibold">Customer phone</p>
+          </div>
+          <input
+            data-testid="customer-phone-input"
+            value={customerPhone || ""}
+            onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+ ]/g, "").slice(0, 14))}
+            inputMode="tel"
+            placeholder="9876543210"
+            className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl h-12 px-4 text-sm text-white placeholder:text-white/30 focus:border-[#F5C518]/50 focus:ring-1 focus:ring-[#F5C518]/30 outline-none font-mono"
+          />
+
+          <div className="mt-5 flex items-center gap-2 mb-3">
+            <Armchair className="w-4 h-4 text-[#E50914]" />
+            <p className="text-[10px] tracking-[0.25em] uppercase text-white/50 font-semibold">Delivery seat</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="block text-[9px] uppercase tracking-[0.18em] text-white/35 mb-1">Row</span>
+              <input
+                data-testid="payment-seat-row-input"
+                value={seatRowInput}
+                onChange={(e) => setSeatRowInput(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 3))}
+                inputMode="text"
+                placeholder="A"
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl h-12 px-4 text-sm text-white placeholder:text-white/30 focus:border-[#E50914]/60 focus:ring-1 focus:ring-[#E50914]/30 outline-none uppercase font-mono"
+              />
+            </label>
+            <label className="block">
+              <span className="block text-[9px] uppercase tracking-[0.18em] text-white/35 mb-1">Seat #</span>
+              <input
+                data-testid="payment-seat-number-input"
+                value={seatNumberInput}
+                onChange={(e) => setSeatNumberInput(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                inputMode="numeric"
+                placeholder="11"
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl h-12 px-4 text-sm text-white placeholder:text-white/30 focus:border-[#E50914]/60 focus:ring-1 focus:ring-[#E50914]/30 outline-none font-mono"
+              />
+            </label>
+          </div>
+          <p className="mt-2 text-[10px] text-white/35">Example: Row A + Seat 11</p>
+        </section>
 
         <section className="mt-6 cb-enter-delay-1">
           <p className="text-[10px] tracking-[0.25em] uppercase text-white/50 font-semibold mb-3">Payment method</p>
           <div className="space-y-3" data-testid="payment-methods">
-            <MethodBtn active={method === "upi"} onClick={() => setMethod("upi")} testId="pay-upi-btn" label="UPI" subtitle="GPay · PhonePe · Paytm" Icon={Smartphone} />
-            <MethodBtn active={method === "card"} onClick={() => setMethod("card")} testId="pay-card-btn" label="Credit / Debit Card" subtitle="Visa · Mastercard · Rupay" Icon={CreditCard} />
+            <MethodBtn active={method === "upi"} onClick={() => setMethod("upi")} testId="pay-upi-btn" label="UPI" subtitle="GPay, PhonePe, Paytm" Icon={Smartphone} />
+            <MethodBtn active={method === "card"} onClick={() => setMethod("card")} testId="pay-card-btn" label="Credit / Debit Card" subtitle="Visa, Mastercard, RuPay" Icon={CreditCard} />
           </div>
         </section>
 
@@ -110,93 +213,10 @@ export default function PaymentPage() {
       </main>
 
       <div className="fixed bottom-4 left-4 right-4 md:max-w-md md:mx-auto z-40">
-        <PrimaryButton testId="place-order-btn" onClick={triggerRazorpayCheckout} disabled={placing}>
-          {placing ? "Processing…" : `Place Order · ₹${grandTotal.toFixed(0)}`}
+        <PrimaryButton testId="place-order-btn" onClick={startRazorpayPayment} disabled={placing}>
+          {placing ? "Opening Razorpay..." : `Pay with Razorpay · ₹${grandTotal.toFixed(0)}`}
         </PrimaryButton>
       </div>
-
-      {/* RAZORPAY SIMULATOR POPUP MODAL */}
-      {showRazorpay && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-5 z-50 animate-fade-in">
-          <div className="w-full max-w-sm rounded-3xl bg-[#0F172A] border border-blue-500/20 shadow-2xl relative overflow-hidden font-sans">
-            
-            {/* Razorpay Brand Bar */}
-            <div className="bg-[#1E293B] px-5 py-4 border-b border-white/5 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-[#3B82F6] flex items-center justify-center text-xs font-bold text-white">R</div>
-                <div>
-                  <h4 className="text-xs font-bold text-white tracking-wide">Razorpay Checkout</h4>
-                  <p className="text-[9px] text-white/50">Simulated Sandbox</p>
-                </div>
-              </div>
-              {payingState !== "paying" && payingState !== "success" && (
-                <button onClick={() => setShowRazorpay(false)} className="text-white/40 hover:text-white transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="p-6 space-y-5">
-              
-              {/* Payment Info */}
-              <div className="text-center bg-black/30 border border-white/5 rounded-2xl p-4">
-                <p className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Amount to pay</p>
-                <p className="text-3xl font-extrabold text-white mt-1">₹{grandTotal.toFixed(2)}</p>
-                <p className="text-[10px] text-blue-400 font-semibold mt-1.5">{seat.theater} · S{seat.screen}-{seat.seat}</p>
-              </div>
-
-              {payingState === "idle" && (
-                <div className="space-y-4">
-                  <div className="text-xs text-white/60 leading-relaxed bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4 flex gap-3">
-                    <Sparkles className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                    <span>Click the button below to authorize a mock Razorpay charge. This completes checkout and routes the order immediately to the kitchen.</span>
-                  </div>
-
-                  <button
-                    onClick={handleRazorpayPayment}
-                    className="w-full h-12 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-sm font-semibold rounded-full flex items-center justify-center gap-2 transition-colors active:scale-98"
-                  >
-                    <Lock className="w-4 h-4" /> Pay & Authorize Order
-                  </button>
-                </div>
-              )}
-
-              {payingState === "paying" && (
-                <div className="flex flex-col items-center py-6 space-y-3">
-                  <div className="w-10 h-10 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-                  <p className="text-sm font-semibold text-white/80">Securing payment authorization...</p>
-                  <p className="text-[10px] text-white/40">Contacting Razorpay Gateway (Sandbox)</p>
-                </div>
-              )}
-
-              {payingState === "success" && (
-                <div className="flex flex-col items-center py-6 space-y-3 animate-pulse">
-                  <CheckCircle2 className="w-12 h-12 text-[#10B981]" />
-                  <p className="text-sm font-bold text-[#10B981]">Payment Successful!</p>
-                  <p className="text-[10px] text-white/40">Routing order ticket to staff console...</p>
-                </div>
-              )}
-
-              {payingState === "error" && (
-                <div className="space-y-4 text-center py-2">
-                  <ShieldAlert className="w-12 h-12 text-[#E50914] mx-auto" />
-                  <div>
-                    <p className="text-sm font-bold text-white">Payment Failed</p>
-                    <p className="text-xs text-[#E50914] mt-1">{err || "An error occurred."}</p>
-                  </div>
-                  <button
-                    onClick={() => setPayingState("idle")}
-                    className="w-full h-11 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-full transition-colors"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              )}
-
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
